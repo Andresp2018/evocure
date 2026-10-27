@@ -30,8 +30,8 @@ python --version
 ### 2. Get the code
 
 ```powershell
-git clone https://github.com/OWNER/REPO.git
-cd REPO
+git clone https://github.com/Andresp2018/evocure.git
+cd evocure
 ```
 
 No `git`? Install with `winget install Git.Git`, or download the ZIP from GitHub and
@@ -143,8 +143,8 @@ sudo pacman -S --needed python python-pip git base-devel
 ### 2. Get the code
 
 ```bash
-git clone https://github.com/OWNER/REPO.git
-cd REPO
+git clone https://github.com/Andresp2018/evocure.git
+cd evocure
 ```
 
 ### 3. Create the environment

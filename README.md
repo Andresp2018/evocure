@@ -44,8 +44,8 @@ Full instructions for both platforms: [docs/INSTALL.md](docs/INSTALL.md).
 ### Windows
 
 ```powershell
-git clone https://github.com/OWNER/REPO.git
-cd REPO
+git clone https://github.com/Andresp2018/evocure.git
+cd evocure
 powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1
 .\.venv\Scripts\python.exe scripts\train_qsar.py
 .\start_evocure.bat
@@ -54,8 +54,8 @@ powershell -ExecutionPolicy Bypass -File scripts\setup_env.ps1
 ### Linux
 
 ```bash
-git clone https://github.com/OWNER/REPO.git
-cd REPO
+git clone https://github.com/Andresp2018/evocure.git
+cd evocure
 bash scripts/setup_env.sh
 ./.venv/bin/python scripts/train_qsar.py
 ./start_evocure.sh
