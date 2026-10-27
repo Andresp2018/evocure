@@ -245,6 +245,55 @@ def main():
     positive_tgi = next(c["tgi_per_replicate"] for c in report["reference_controls"]
                         if c["label"] == POSITIVE_CONTROL)
 
+    # Like for like control. The positive control draws its potency from curated
+    # experimental bioactivity; a generated structure cannot, and the structure
+    # property model that scores it has a floor well above the reference value. So
+    # the positive control is also run with its curated bioactivity removed, which
+    # is the only comparator the candidates are actually measured against.
+    def modelled_potency_arm(query: str) -> dict | None:
+        from simulation.biology.registry import DiseaseRegistry
+        import copy as _copy
+
+        record = engine._resolve_compound_rec(query)
+        bare = _copy.deepcopy(record)
+        bare.reference_bioactivity = {}
+
+        profile = dict(engine.pharmacology.evaluate_admet(bare))
+        response = engine.pharmacology.predict_antitumor_activity(bare)
+        for key in ("ic50_sensitive_um", "ic50_resistant_um", "ic50_healthy_um", "hill_slope"):
+            value = response.get(key, {})
+            raw = value.get("value") if isinstance(value, dict) else value
+            if not isinstance(raw, (int, float)):
+                return None
+            profile[key] = float(raw)
+        profile["emax"] = float(response["emax"]["value"]) * engine.tumor_module.emax_default
+        if isinstance(profile.get("fraction_unbound_plasma"), dict):
+            profile["fraction_unbound_plasma"] = profile["fraction_unbound_plasma"]["value"]
+
+        values = []
+        for seed in REPLICATES:
+            print("TISSUE modelled_potency_control", seed, flush=True)
+            sim = DiseaseRegistry().create("PDAC", seed=seed, nx=36, ny=28)
+            values.append(sim.run_controlled_comparison(
+                compound=bare, pharmacology_profile=profile,
+                applied_concentration_um=5.0, duration_hours=24.0, seed=seed,
+            )["deltas"]["tumor_growth_inhibition_pct"])
+
+        curated_ic50 = engine._tissue_pharmacology(record)[0]["ic50_sensitive_um"]
+        return {
+            "compound": query,
+            "curated_ic50_um": round(float(curated_ic50), 4),
+            "modelled_ic50_um": round(profile["ic50_sensitive_um"], 4),
+            "fold_weaker_when_modelled": round(
+                profile["ic50_sensitive_um"] / max(1e-9, float(curated_ic50)), 1),
+            "tgi_per_replicate": values,
+            "summary": describe_spread(values),
+            "versus_negative_control": compare_to_control(values, negative_tgi),
+        }
+
+    report["modelled_potency_control"] = modelled_potency_arm(POSITIVE_CONTROL)
+    print("MODELLED_CONTROL", json.dumps(report["modelled_potency_control"]), flush=True)
+
     assay = compare_to_control(positive_tgi, negative_tgi)
     report["assay_validity"] = {
         "positive_vs_negative_control": assay,
@@ -259,10 +308,16 @@ def main():
     }
     print("ASSAY", json.dumps(report["assay_validity"]), flush=True)
 
+    modelled_arm = report.get("modelled_potency_control") or {}
+    modelled_tgi = modelled_arm.get("tgi_per_replicate")
+
     for index, candidate in enumerate(result["top_candidates"], 1):
         details = evaluate(candidate["compound_id"], f"Candidate_{index:02}", candidate)
         details["versus_negative_control"] = compare_to_control(
             details["tgi_per_replicate"], negative_tgi)
+        if modelled_tgi:
+            details["versus_modelled_potency_control"] = compare_to_control(
+                details["tgi_per_replicate"], modelled_tgi)
         report["candidates"].append(details)
         (OUT / "experiment_results.partial.json").write_text(
             json.dumps(report, indent=2), encoding="utf-8")
@@ -281,7 +336,18 @@ def main():
     report["candidates_separating_bonferroni"] = corrected
 
     total = len(report["candidates"])
-    if not separated:
+    control_fails_too = (
+        modelled_arm.get("versus_negative_control", {}).get("separates_from_negative_control")
+        is False
+    )
+    if not separated and control_fails_too:
+        # Reporting the bare count would read as a verdict on the molecules. It is not
+        # one while the positive control fails the same test under the same scoring.
+        report["headline"] = (
+            f"No candidate of {total} separated from the negative control, and neither "
+            f"did the positive control when scored by the same potency model."
+        )
+    elif not separated:
         report["headline"] = (
             f"No candidate of {total} separated from the negative control across "
             f"{len(REPLICATES)} seeds."

@@ -346,7 +346,7 @@ def summary_section(pdf: Report, data: dict) -> None:
     negative = controls.get(data.get("controls", {}).get("negative", "Caffeine"))
 
     rows = []
-    for role, entry in (("Positive control", positive), ("Negative control", negative)):
+    for role, entry in (("Positive, curated", positive), ("Negative", negative)):
         if not entry:
             continue
         spread = entry["summary"]["tgi"]
@@ -356,11 +356,30 @@ def summary_section(pdf: Report, data: dict) -> None:
             f"{fmt(spread['ci95_low'], 1)} to {fmt(spread['ci95_high'], 1)}",
             "yes" if spread.get("excludes_zero") else "no",
         ])
+
+    modelled = data.get("modelled_potency_control") or {}
+    if modelled:
+        spread = modelled["summary"]
+        rows.append([
+            "Positive, modelled", ascii_only(modelled["compound"]),
+            fmt(spread["mean"], 1),
+            f"{fmt(spread['ci95_low'], 1)} to {fmt(spread['ci95_high'], 1)}",
+            "yes" if spread.get("excludes_zero") else "no",
+        ])
+
     pdf.table(
         ["Role", "Compound", "TGI %", "95% CI", "CI excludes 0"],
         [34, 42, 24, 44, 30], rows,
         ["L", "L", "R", "C", "C"],
     )
+
+    if modelled:
+        pdf.small(
+            "The third arm is the same positive control molecule with its curated "
+            "bioactivity withheld, so its potency comes from the structure-property model "
+            "that scores every generated candidate. It is the only arm the candidates can "
+            "fairly be compared against."
+        )
 
     separated_controls = data.get("assay_validity", {}).get("assay_separates_controls")
     pdf.callout(
@@ -371,6 +390,30 @@ def summary_section(pdf: Report, data: dict) -> None:
          ascii_only(data.get("assay_validity", {}).get("interpretation", ""))),
         tone="info" if separated_controls else "warn",
     )
+
+    modelled = data.get("modelled_potency_control") or {}
+    if modelled:
+        pdf.h2("1.1a The comparison is between a measurement and a prediction")
+        separates = modelled.get("versus_negative_control", {}).get(
+            "separates_from_negative_control")
+        pdf.callout(
+            "The positive control fails its own test when scored like a candidate",
+            f"{ascii_only(modelled['compound'])} draws its potency from curated "
+            f"experimental bioactivity: IC50 {fmt(modelled['curated_ic50_um'], 4)} uM, and it "
+            f"inhibits growth by {fmt((positive or {}).get('summary', {}).get('tgi', {}).get('mean'), 1)} %. "
+            f"A generated structure has no measurement, so it is scored by the "
+            f"structure-property model. Scoring this same molecule that way gives IC50 "
+            f"{fmt(modelled['modelled_ic50_um'], 3)} uM, {fmt(modelled['fold_weaker_when_modelled'], 0)} "
+            f"times weaker, and growth inhibition falls to "
+            f"{fmt(modelled['summary']['mean'], 1)} %"
+            + (", which does not separate from the negative control.\n\n"
+               if separates is False else ".\n\n") +
+            "Nothing about the molecule changed. Only the provenance of its potency did. "
+            "Any candidate in this report is therefore being compared against a number no "
+            "generated structure can ever be assigned, and failing that comparison says "
+            "little about the chemistry.",
+            tone="warn",
+        )
 
     pdf.h2("1.2 The five candidates")
     rows, colors = [], []
@@ -411,16 +454,25 @@ def summary_section(pdf: Report, data: dict) -> None:
 
     separated = data.get("candidates_separating_from_negative_control", [])
     if not separated:
+        control_also_fails = (modelled.get("versus_negative_control", {})
+                              .get("separates_from_negative_control") is False)
+        extra = (
+            "\n\nThis is not evidence that the molecules are inactive. The positive "
+            "control fails the identical test when scored by the same potency model, so "
+            "the test does not currently distinguish a good candidate from a known drug. "
+            "What the run establishes is a limit of the platform, not a property of these "
+            "five structures."
+            if control_also_fails else ""
+        )
         pdf.callout(
             "Read this before using the ranking",
             "No candidate separated from the negative control in the tissue simulation. The "
             "ranking above is therefore driven by predicted properties, drug likeness, "
             "toxicity alerts and applicability domain, not by a demonstrated simulated "
-            "effect. The positive control did separate, so the assay itself responds to a "
-            "known active; these particular structures did not reproduce that response.\n\n"
-            "The honest reading is that the search found chemically reasonable, low alert, "
-            "drug like molecules near the seed scaffolds, and that the simulation does not "
-            "support calling any of them active. Treat the list as a starting set for "
+            "effect." + extra +
+            "\n\nThe honest reading is that the search found chemically reasonable, low "
+            "alert, drug like molecules near the seed scaffolds, and that this experiment "
+            "cannot say whether any of them is active. Treat the list as a starting set for "
             "further computational work, not as a shortlist of likely treatments.",
             tone="warn",
         )

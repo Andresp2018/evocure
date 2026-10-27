@@ -216,6 +216,14 @@ a disclaimer. Specifically:
   numbers from that run are not interpretable, and the report states this.
 - Activity predictions are made only where a validated predictor exists. Elsewhere the
   value is "unavailable", never a plausible looking substitute.
+- Reference drugs and generated structures do not get their potency from the same place,
+  and the example report says so on the page where the comparison appears. A curated drug
+  uses measured bioactivity; a new structure uses a heuristic whose most potent possible
+  output is about nineteen times weaker than gemcitabine's measured value. Scoring
+  gemcitabine itself through that heuristic drops it from 67% growth inhibition to -1%.
+  Published runs therefore carry a third control arm, the positive control re-scored the
+  way a candidate is scored, because that is the only fair comparator.
+  `scripts/investigate_potency_asymmetry.py` reproduces this.
 - Computed descriptors always describe the molecule actually present. The coevolution
   engine mutates a real structure with RDKit and measures the result; it never shifts a
   parent's properties by a fixed delta and labels the unchanged parent a derivative.

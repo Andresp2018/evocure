@@ -50,6 +50,7 @@ data/raw/
 reports/*
 !reports/.gitkeep
 !reports/EVOCURE_PDAC_Candidate_Report.pdf
+!reports/potency_asymmetry.json
 
 # Godot editor state
 godot_frontend/.godot/

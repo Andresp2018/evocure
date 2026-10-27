@@ -1,0 +1,304 @@
+{
+  "seed": 20261027,
+  "replicates": [
+    20261027,
+    20261028,
+    20261029,
+    20261030,
+    20261031
+  ],
+  "duration_hours": 24.0,
+  "grid": {
+    "nx": 36,
+    "ny": 28
+  },
+  "doses_um": [
+    1.0,
+    5.0,
+    25.0,
+    100.0,
+    500.0
+  ],
+  "provenance": [
+    {
+      "label": "Gemcitabine",
+      "ic50_sensitive_um": 0.045,
+      "source": "GDSC2 / ChEMBL32 Literature",
+      "epistemic_category": "Imported experimental observation",
+      "has_curated_bioactivity": true,
+      "mol_weight": 263.2,
+      "logp": -1.29,
+      "qed": 0.612,
+      "best_model_output_is_x_times_weaker": 19.4
+    },
+    {
+      "label": "5-Fluorouracil",
+      "ic50_sensitive_um": 3.1,
+      "source": "GDSC2 / ChEMBL Literature",
+      "epistemic_category": "Imported experimental observation",
+      "has_curated_bioactivity": true,
+      "mol_weight": 130.1,
+      "logp": -0.8,
+      "qed": 0.483,
+      "best_model_output_is_x_times_weaker": 0.3
+    },
+    {
+      "label": "Erlotinib",
+      "ic50_sensitive_um": 0.45,
+      "source": "GDSC2 / ChEMBL",
+      "epistemic_category": "Imported experimental observation",
+      "has_curated_bioactivity": true,
+      "mol_weight": 393.4,
+      "logp": 3.4,
+      "qed": 0.418,
+      "best_model_output_is_x_times_weaker": 1.9
+    },
+    {
+      "label": "Caffeine",
+      "ic50_sensitive_um": 1000.0,
+      "source": "ChEMBL / Literature",
+      "epistemic_category": "Imported experimental observation",
+      "has_curated_bioactivity": true,
+      "mol_weight": 194.2,
+      "logp": -1.03,
+      "qed": 0.538,
+      "best_model_output_is_x_times_weaker": 0.0
+    },
+    {
+      "label": "Candidate_01",
+      "ic50_sensitive_um": 6.354,
+      "source": "EVOCURE Exploratory Pharmacophore Model",
+      "epistemic_category": "Exploratory model result",
+      "has_curated_bioactivity": false,
+      "mol_weight": 357.3,
+      "logp": -1.66,
+      "qed": 0.512
+    },
+    {
+      "label": "Candidate_02",
+      "ic50_sensitive_um": 5.686,
+      "source": "EVOCURE Exploratory Pharmacophore Model",
+      "epistemic_category": "Exploratory model result",
+      "has_curated_bioactivity": false,
+      "mol_weight": 398.4,
+      "logp": -0.75,
+      "qed": 0.48
+    },
+    {
+      "label": "Candidate_03",
+      "ic50_sensitive_um": 7.164,
+      "source": "EVOCURE Exploratory Pharmacophore Model",
+      "epistemic_category": "Exploratory model result",
+      "has_curated_bioactivity": false,
+      "mol_weight": 291.2,
+      "logp": -0.95,
+      "qed": 0.655
+    },
+    {
+      "label": "Candidate_04",
+      "ic50_sensitive_um": 5.298,
+      "source": "EVOCURE Exploratory Pharmacophore Model",
+      "epistemic_category": "Exploratory model result",
+      "has_curated_bioactivity": false,
+      "mol_weight": 373.3,
+      "logp": -0.29,
+      "qed": 0.542
+    },
+    {
+      "label": "Candidate_05",
+      "ic50_sensitive_um": 8.125,
+      "source": "EVOCURE Exploratory Pharmacophore Model",
+      "epistemic_category": "Exploratory model result",
+      "has_curated_bioactivity": false,
+      "mol_weight": 492.4,
+      "logp": -1.05,
+      "qed": 0.376
+    }
+  ],
+  "structure_property_range_um": {
+    "best_possible": 0.8728,
+    "worst": 9.2196
+  },
+  "like_for_like": {
+    "negative_control_tgi": [
+      0.0,
+      -16.22,
+      0.0,
+      4.55,
+      -17.07
+    ],
+    "gemcitabine_curated": {
+      "ic50_um": 0.045,
+      "tgi": [
+        68.57,
+        75.68,
+        61.9,
+        63.64,
+        65.85
+      ],
+      "mean": 67.13,
+      "mean_difference_pct": 72.876,
+      "p_value": 6.62972686232745e-06,
+      "separates": true
+    },
+    "gemcitabine_as_novel_structure": {
+      "ic50_um": 8.053,
+      "tgi": [
+        0.0,
+        -16.22,
+        9.52,
+        9.09,
+        -7.32
+      ],
+      "mean": -0.99,
+      "mean_difference_pct": 4.762,
+      "p_value": 0.4969334621508745,
+      "separates": false
+    },
+    "verdict": "The same molecule separates with its curated potency and fails with its modelled potency. The screening result is driven by where the number comes from, not by the chemistry of the candidates."
+  },
+  "dose_response": [
+    {
+      "label": "Gemcitabine",
+      "ic50_um": 0.045,
+      "tgi_by_dose": {
+        "1.0": 61.19,
+        "5.0": 68.72,
+        "25.0": 71.78,
+        "100.0": 86.02,
+        "500.0": 85.12
+      }
+    },
+    {
+      "label": "Caffeine",
+      "ic50_um": 1000.0,
+      "tgi_by_dose": {
+        "1.0": -5.41,
+        "5.0": -5.41,
+        "25.0": -7.21,
+        "100.0": -8.05,
+        "500.0": -6.68
+      }
+    },
+    {
+      "label": "Candidate_01",
+      "ic50_um": 6.354,
+      "tgi_by_dose": {
+        "1.0": -7.21,
+        "5.0": 11.74,
+        "25.0": 29.91,
+        "100.0": 58.92,
+        "500.0": 72.94
+      }
+    },
+    {
+      "label": "Candidate_02",
+      "ic50_um": 5.686,
+      "tgi_by_dose": {
+        "1.0": -7.21,
+        "5.0": 6.98,
+        "25.0": 25.62,
+        "100.0": 60.19,
+        "500.0": 74.85
+      }
+    }
+  ],
+  "candidates_reaching_50pct_at_any_dose": [
+    "Candidate_01",
+    "Candidate_02"
+  ],
+  "qsar_driven": [
+    {
+      "label": "Candidate_01",
+      "heuristic_ic50_um": 6.354,
+      "qsar_ic50_um": 0.0933,
+      "fold_difference": 68.1,
+      "tgi_with_qsar": [
+        91.43,
+        70.27,
+        66.67,
+        81.82,
+        75.61
+      ],
+      "mean_tgi_with_qsar": 77.16,
+      "mean_difference_pct": 82.908,
+      "p_value": 1.074932604232971e-06,
+      "separates": true
+    },
+    {
+      "label": "Candidate_02",
+      "heuristic_ic50_um": 5.686,
+      "qsar_ic50_um": 0.0733,
+      "fold_difference": 77.6,
+      "tgi_with_qsar": [
+        82.86,
+        67.57,
+        76.19,
+        79.55,
+        63.41
+      ],
+      "mean_tgi_with_qsar": 73.92,
+      "mean_difference_pct": 79.664,
+      "p_value": 1.1684253542247638e-06,
+      "separates": true
+    },
+    {
+      "label": "Candidate_03",
+      "heuristic_ic50_um": 7.164,
+      "qsar_ic50_um": 1.0685,
+      "fold_difference": 6.7,
+      "tgi_with_qsar": [
+        42.86,
+        10.81,
+        40.48,
+        36.36,
+        43.9
+      ],
+      "mean_tgi_with_qsar": 34.88,
+      "mean_difference_pct": 40.63,
+      "p_value": 0.0009427810067830536,
+      "separates": true
+    },
+    {
+      "label": "Candidate_04",
+      "heuristic_ic50_um": 5.298,
+      "qsar_ic50_um": 0.1079,
+      "fold_difference": 49.1,
+      "tgi_with_qsar": [
+        65.71,
+        64.86,
+        57.14,
+        59.09,
+        60.98
+      ],
+      "mean_tgi_with_qsar": 61.56,
+      "mean_difference_pct": 67.304,
+      "p_value": 3.199040689359146e-05,
+      "separates": true
+    },
+    {
+      "label": "Candidate_05",
+      "heuristic_ic50_um": 8.125,
+      "qsar_ic50_um": 0.0788,
+      "fold_difference": 103.1,
+      "tgi_with_qsar": [
+        68.57,
+        67.57,
+        85.71,
+        84.09,
+        60.98
+      ],
+      "mean_tgi_with_qsar": 73.38,
+      "mean_difference_pct": 79.132,
+      "p_value": 2.428304077755246e-06,
+      "separates": true
+    }
+  ],
+  "candidates_separating_with_qsar_potency": [
+    "Candidate_01",
+    "Candidate_02",
+    "Candidate_03",
+    "Candidate_04",
+    "Candidate_05"
+  ]
+}
