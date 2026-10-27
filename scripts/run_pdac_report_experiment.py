@@ -130,6 +130,10 @@ def main():
         "applied_concentration_um": 5.0, "duration_hours": 24.0,
         "seed": SEED, "objective_weights": plan["objective_weights"],
         "candidate_count": 5,
+        # Closed selection loop: every candidate that can be dosed is simulated in the
+        # microenvironment and its growth inhibition is a selection objective, so the
+        # tumour model drives the search instead of only reporting on its output.
+        "tissue_in_fitness": True,
     }
     print("PLAN", plan["provider"], settings, flush=True)
 
@@ -173,6 +177,10 @@ def main():
                 ROOT / "simulation/discovery/workbench.py",
             ]
         },
+        "selection_basis": result["selection_basis"],
+        "tissue_in_fitness": result["tissue_in_fitness"],
+        "objective_keys": result["objective_keys"],
+        "tissue_simulations_run": len(result["controlled_comparisons"]),
         "qsar_validation": dict(engine.qsar.validation_metrics),
         "training_structure_count": len(engine.qsar.train_smiles),
         "search_total_structures": result["total_molecules_evaluated"],

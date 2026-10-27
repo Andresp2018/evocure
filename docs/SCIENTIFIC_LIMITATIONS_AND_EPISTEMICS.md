@@ -34,3 +34,14 @@ Every quantitative or categorical metric returned by EVOCURE carries an explicit
    - Does **not** capture full 3D organ vasculature, metastatic dissemination, adaptive systemic T-cell priming in lymph nodes, or human clinical trial pharmacokinetics.
 6. **Deterministic Reproducibility Boundaries**:
    - Given an identical configuration and `PCG64` seed on the same CPU architecture and Python/NumPy build, simulations are deterministically reproducible and invariant to graphical FPS. Cross-architecture floating-point or GPU thread scheduling is not claimed to be bit-identical without verification.
+
+7. **What Selection Optimises (Open vs Closed Loop)**:
+   - The discovery pipeline's `tissue_in_fitness` flag decides whether the tumour microenvironment participates in selection. With it `False` (the default) the objective set is the five chemistry and prediction criteria, the microenvironment simulation runs only for the top ranked candidates, and it exerts **no selective pressure**: the search optimises a QSAR surrogate and the tissue figures are a readout. With it `True` every candidate that can be dosed is simulated and its growth inhibition becomes a sixth objective entering NSGA-II sorting and survivor selection.
+   - Any statement that the platform "evolves compounds against a tumour" is accurate only in the closed-loop configuration, and every result must record which mode produced it. The published example report uses the closed loop and states so.
+   - Even closed, this objective is not independent evidence. The tissue model's drug response is parameterised by the predicted $\text{IC}_{50}$, so the sixth objective is correlated with the first; it adds diffusion, uptake, hypoxia and clonal structure on top of a prediction rather than substituting a measurement for it. All arms in a generation share one seed, which pairs the comparison but leaves this the noisiest objective of the six.
+
+8. **Descriptors Always Describe the Present Molecule**:
+   - No code path may shift a parent compound's physicochemical descriptors by a fixed increment while leaving its structure unchanged and then record the result as a derivative. The coevolution engine performs an RDKit structural mutation and recomputes every descriptor from the resulting graph; when no valid variant is produced the parent is returned unchanged rather than relabelled. This is a correctness requirement, not a stylistic one, because fabricated descriptors propagate silently into the heuristic pharmacology and from there into tumour response. Pinned by `tests/level3_evolution/test_selection_loop.py`.
+
+9. **Scale of the Search**:
+   - Published runs evaluate on the order of $10^2$ unique structures across a handful of generations. Established molecular optimisation studies operate at $10^4$ to $10^6$ evaluations. Results here characterise the platform's behaviour, not the limits of what the method could find.

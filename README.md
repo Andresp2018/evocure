@@ -125,9 +125,23 @@ strictly separate from the biomedical models.
 
 **Candidate discovery.** A fifteen stage pipeline: seed import, structural variant
 generation, RDKit validation, descriptor calculation, calibrated QSAR with conformal
-intervals, ADMET and ten category toxicology, applicability domain check, five objective
+intervals, ADMET and ten category toxicology, applicability domain check, multi objective
 scoring, triage, controlled tissue simulation, NSGA-II Pareto sorting, and population
 update across generations.
+
+Selection runs in one of two modes, and which one you use changes what the search
+actually optimises:
+
+| `tissue_in_fitness` | Objectives | What drives selection |
+|---|---|---|
+| `False` (default) | 5 | QSAR prediction, toxicity, drug likeness, domain. The tissue simulation is a readout only |
+| `True` | 6 | The above plus simulated growth inhibition, with every dosable candidate simulated |
+
+The closed loop is what makes this evolution *against a tumour model* rather than against
+a QSAR surrogate. It costs roughly one second of CPU per candidate per generation. The
+published example report uses it. Be aware that the tissue model's drug response is
+driven by the predicted IC50, so the sixth objective correlates with the first rather
+than being independent evidence.
 
 **Disease models.** Pancreatic ductal adenocarcinoma, KRAS mutant lung cancer, resistant
 bacterial biofilm and MASLD liver disease. Each is a two dimensional agent based tissue
@@ -202,6 +216,10 @@ a disclaimer. Specifically:
   numbers from that run are not interpretable, and the report states this.
 - Activity predictions are made only where a validated predictor exists. Elsewhere the
   value is "unavailable", never a plausible looking substitute.
+- Computed descriptors always describe the molecule actually present. The coevolution
+  engine mutates a real structure with RDKit and measures the result; it never shifts a
+  parent's properties by a fixed delta and labels the unchanged parent a derivative.
+  `tests/level3_evolution/test_selection_loop.py` pins this.
 - Structural similarity to a known drug does not transfer efficacy, and absence from a
   small local library does not establish novelty. Both are stated wherever similarity is
   reported.

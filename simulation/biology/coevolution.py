@@ -34,6 +34,7 @@ from simulation.core.contracts import (
     EpistemicCategory,
 )
 from simulation.biology.diseases.pdac import PDACModule
+from simulation.evolution.molecular_ga import DirectedMolecularOptimizer
 
 
 class CoevolutionEngine:
@@ -49,12 +50,16 @@ class CoevolutionEngine:
         variation_callback: Callable[[CompoundRecord, np.random.Generator], CompoundRecord] | None = None,
         pharmacology_callback: Callable[[CompoundRecord, dict[str, Any]], dict[str, Any]] | None = None,
         seed: int = 42,
+        variants_per_mutation: int = 6,
     ) -> None:
         self.seed = seed
         self.rng = np.random.default_rng(seed)
         self.tumor = tumor_module if tumor_module is not None else PDACModule(seed=seed)
         self.variation_callback = variation_callback
         self.pharmacology_callback = pharmacology_callback
+        # Structural variants proposed per mutation. The tumour's resistance profile
+        # chooses among them, which is how its state feeds back into the chemistry.
+        self.variants_per_mutation = max(1, int(variants_per_mutation))
 
         # Initial Founder Compound Pool
         self.compound_pool: list[CompoundRecord] = (
@@ -237,55 +242,63 @@ class CoevolutionEngine:
         if self.variation_callback is not None:
             return self.variation_callback(parent, self.rng)
 
-        # Deterministic chemical transformation
-        variant_idx = self.rng.integers(100, 999)
-        child_id = f"{parent.compound_id}-v{variant_idx}"
+        if not RDKIT_AVAILABLE:
+            raise RuntimeError(
+                "Coevolution requires RDKit to vary structures. Install rdkit, or pass a "
+                "variation_callback. Descriptors are never shifted without changing the "
+                "molecule they describe."
+            )
 
-        transformations = [
-            ("fluorination", "+F on phenyl ring", 18.0, 0.15, "C-F bioisostere"),
-            ("hydroxylation", "+OH polar addition", 16.0, -0.45, "Lower lipophilicity/efflux"),
-            ("methylation", "+CH3 hydrophobic fill", 14.0, 0.35, "Subpocket filling"),
-            ("methoxy_addition", "+OCH3 donor", 30.0, 0.10, "H-bond acceptor expansion"),
-            ("cyclopropyl_substitution", "Cyclopropyl isostere", 26.0, 0.25, "Rigidity optimization"),
-        ]
+        # Mutate the actual structure, then measure the result. Shifting a parent's
+        # descriptors by a fixed delta would describe a molecule that does not exist.
+        variants: list[tuple[str, str, Any]] = []
+        for _ in range(self.variants_per_mutation):
+            smiles, label = DirectedMolecularOptimizer.mutate_smiles(
+                parent.canonical_smiles, rng=self.rng
+            )
+            if smiles == parent.canonical_smiles:
+                continue
+            candidate = Chem.MolFromSmiles(smiles)
+            if candidate is not None:
+                variants.append((smiles, label, candidate))
 
-        # If tumor has high efflux/resistance, favor polar / efflux-lowering modifications
+        if not variants:
+            # No valid variant this round: the parent survives unchanged rather than
+            # being recorded as a derivative it is not.
+            return parent
+
         if target_resistance_focus == "efflux_evasion":
-            trans = transformations[1]  # hydroxylation
+            # The tumour is efflux dominated, so prefer the least lipophilic real
+            # variant. The ranking uses each candidate's own computed cLogP.
+            child_smiles, trans_type, mol = min(
+                variants, key=lambda item: float(Descriptors.MolLogP(item[2]))
+            )
         else:
-            trans = transformations[int(self.rng.integers(0, len(transformations)))]
+            child_smiles, trans_type, mol = variants[int(self.rng.integers(0, len(variants)))]
 
-        trans_type, desc, delta_mw, delta_logp, note = trans
-
-        new_mw = max(200.0, parent.mol_weight + delta_mw)
-        new_logp = max(-0.5, parent.logp + delta_logp)
-        new_qed = float(np.clip(parent.qed + self.rng.normal(0.02, 0.04), 0.35, 0.92))
-
-        # Generate modified SMILES representation
-        child_smiles = parent.canonical_smiles
-        if RDKIT_AVAILABLE:
-            try:
-                mol = Chem.MolFromSmiles(parent.canonical_smiles)
-                if mol is not None:
-                    # RDKit validation & canonicalization
-                    child_smiles = Chem.MolToSmiles(mol)
-            except Exception:
-                pass
-
+        variant_idx = self.rng.integers(100, 999)
         child = CompoundRecord(
-            compound_id=child_id,
+            compound_id=f"{parent.compound_id}-v{variant_idx}",
             name=f"{parent.name}-{trans_type[:4].upper()}",
             common_name=f"{parent.name} derivative",
-            canonical_smiles=child_smiles,
-            formula=parent.formula,
-            mol_weight=round(new_mw, 2),
-            logp=round(new_logp, 2),
-            qed=round(new_qed, 3),
+            canonical_smiles=Chem.MolToSmiles(mol, canonical=True),
+            formula=rdMolDescriptors.CalcMolFormula(mol),
+            mol_weight=round(float(Descriptors.MolWt(mol)), 3),
+            exact_mass=round(float(Descriptors.ExactMolWt(mol)), 4),
+            formal_charge=int(Chem.GetFormalCharge(mol)),
+            logp=round(float(Descriptors.MolLogP(mol)), 3),
+            tpsa=round(float(rdMolDescriptors.CalcTPSA(mol)), 2),
+            hbd=int(rdMolDescriptors.CalcNumHBD(mol)),
+            hba=int(rdMolDescriptors.CalcNumHBA(mol)),
+            rotatable_bonds=int(rdMolDescriptors.CalcNumRotatableBonds(mol)),
+            heavy_atoms=int(mol.GetNumHeavyAtoms()),
+            qed=round(float(QED.qed(mol)), 3),
+            inchi_key=Chem.MolToInchiKey(mol),
             family_id=parent.family_id,
             origin_generation=generation,
             parent_ids=[parent.compound_id],
             transformation_type=trans_type,
-            provenance=f"Directed coevolutionary optimization ({note})",
+            provenance="Directed coevolutionary optimization (RDKit structural variant)",
             epistemic_category=EpistemicCategory.CALCULATED_PHYSICOCHEMICAL,
         )
         return child

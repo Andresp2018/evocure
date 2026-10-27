@@ -53,6 +53,17 @@ NON_CLINICAL_DISCLAIMER: str = (
     "toxicology, selectivity, and drug-likeness."
 )
 
+BASE_OBJECTIVE_KEYS: tuple[str, ...] = (
+    "predicted_pdac_activity",
+    "selectivity_index",
+    "qed_druglikeness",
+    "low_toxicological_risk",
+    "applicability_domain_confidence",
+)
+
+# Added to the objective set only when the caller closes the selection loop.
+TISSUE_OBJECTIVE_KEY: str = "simulated_growth_inhibition"
+
 DEFAULT_SEEDS: list[str] = [
     "Nc1ccn([C@@H]2O[C@H](CO)[C@@H](O)C2(F)F)c(=O)n1",  # Gemcitabine
     "O=c1[nH]cc(F)c(=O)[nH]1",                          # 5-Fluorouracil
@@ -107,12 +118,23 @@ class CandidateDiscoveryPipeline:
         progress_callback: Callable | None = None,
         objective_weights: dict[str, float] | None = None,
         candidate_count: int = 5,
+        tissue_in_fitness: bool = False,
     ) -> dict[str, Any]:
         """
         Execute the full 15-stage iterative discovery pipeline across the specified
         number of evolutionary generations.
+
+        tissue_in_fitness closes the selection loop. When False (the default) selection
+        uses the five chemistry and prediction objectives only, and the microenvironment
+        simulation is a readout computed for the top ranked candidates. When True every
+        candidate with an estimated IC50 is simulated and its growth inhibition becomes a
+        sixth objective, so the tumour model exerts actual selective pressure on the
+        population instead of merely reporting on it.
         """
         rng = np.random.default_rng(seed)
+        objective_keys = list(BASE_OBJECTIVE_KEYS)
+        if tissue_in_fitness:
+            objective_keys.append(TISSUE_OBJECTIVE_KEY)
         if self.disease_id != "PDAC":
             objective_weights = {"predicted_pdac_activity": 0.0, "selectivity_index": 0.0,
                                  "qed_druglikeness": 1.0, "low_toxicological_risk": 1.0,
@@ -531,8 +553,13 @@ class CandidateDiscoveryPipeline:
                     candidate["composite_utility"] = sum(value * max(0.0, float(objective_weights.get(key, 1.0))) for key, value in candidate["objectives"].items()) / weight_total
                 evaluated_candidates.sort(key=lambda c: c["composite_utility"], reverse=True)
 
-            # Select top K candidates for cellular microenvironment simulation
-            top_for_cellular = evaluated_candidates[: max(1, top_k_cellular)]
+            # Select the cohort for cellular microenvironment simulation. With the loop
+            # closed every candidate that can be dosed is simulated, because an objective
+            # that only exists for the top few cannot be compared across the population.
+            if tissue_in_fitness:
+                top_for_cellular = [c for c in evaluated_candidates if c.get("ic50_um") is not None]
+            else:
+                top_for_cellular = evaluated_candidates[: max(1, top_k_cellular)]
 
             stage_trace.append({
                 "stage_number": 10,
@@ -561,16 +588,46 @@ class CandidateDiscoveryPipeline:
                 adapted_pharma = dict(admet)
                 if isinstance(adapted_pharma.get("fraction_unbound_plasma"), dict):
                     adapted_pharma["fraction_unbound_plasma"] = adapted_pharma["fraction_unbound_plasma"].get("value", 0.25)
-                if "ic50_um" in cand and cand["ic50_um"] is not None:
+
+                if tissue_in_fitness:
+                    # Use the same potency derivation the reporting path uses. Driving the
+                    # fitness simulation from the raw QSAR IC50 while the evaluation uses
+                    # the pharmacology model made the optimiser and the judge disagree by
+                    # more than an order of magnitude, so selection chased a target that
+                    # was never measured.
+                    response = self.pharmacology_engine.predict_antitumor_activity(comp)
+                    usable = True
+                    for key in ("ic50_sensitive_um", "ic50_resistant_um", "ic50_healthy_um", "hill_slope"):
+                        value = response.get(key, {})
+                        raw = value.get("value") if isinstance(value, dict) else value
+                        if not isinstance(raw, (int, float)):
+                            usable = False
+                            break
+                        adapted_pharma[key] = float(raw)
+                    if not usable:
+                        continue
+                elif "ic50_um" in cand and cand["ic50_um"] is not None:
                     ic50_val = max(0.001, float(cand["ic50_um"]))
                     adapted_pharma["ic50_sensitive_um"] = ic50_val
                     adapted_pharma["ic50_resistant_um"] = ic50_val * 4.5
                     adapted_pharma["ic50_healthy_um"] = ic50_val * 12.0
 
                 # Convert fractional Emax to the tissue model's per-second hazard.
-                adapted_pharma["emax"] = PDACModule.emax_default if hasattr(PDACModule, "emax_default") else 0.000035
+                base_emax = PDACModule.emax_default if hasattr(PDACModule, "emax_default") else 0.000035
+                if tissue_in_fitness:
+                    # The reporting path scales the hazard by the model's fractional Emax.
+                    fraction = response.get("emax", {})
+                    fraction = fraction.get("value") if isinstance(fraction, dict) else fraction
+                    adapted_pharma["emax"] = base_emax * (
+                        float(fraction) if isinstance(fraction, (int, float)) else 1.0
+                    )
+                else:
+                    adapted_pharma["emax"] = base_emax
                 # Run controlled comparison vs untreated vehicle control (0.0 uM)
-                disease_sim = self.disease_registry.create(self.disease_id, seed=seed, nx=30, ny=24)
+                # Match the reporting grid when the loop is closed, so the fitness
+                # landscape and the evaluated landscape are the same one.
+                grid = {"nx": 36, "ny": 28} if tissue_in_fitness else {"nx": 30, "ny": 24}
+                disease_sim = self.disease_registry.create(self.disease_id, seed=seed, **grid)
                 comparison = disease_sim.run_controlled_comparison(
                     compound=comp,
                     pharmacology_profile=adapted_pharma,
@@ -589,6 +646,28 @@ class CandidateDiscoveryPipeline:
                     "barrier_attenuation_ratio": comparison["deltas"]["barrier_attenuation_ratio"],
                 })
                 all_controlled_comparisons.append(comparison)
+
+            if tissue_in_fitness:
+                # Promote the simulated response to a selection objective. Every arm uses
+                # the same seed, so candidates are compared on paired runs; the single seed
+                # still leaves this the noisiest objective of the six.
+                for cand in evaluated_candidates:
+                    deltas = (cand.get("controlled_cellular_comparison") or {}).get("deltas") or {}
+                    tgi = deltas.get("tumor_growth_inhibition_pct")
+                    cand["tissue_simulated"] = tgi is not None
+                    cand["objectives"][TISSUE_OBJECTIVE_KEY] = (
+                        round(max(0.0, min(1.0, float(tgi) / 100.0)), 4)
+                        if tgi is not None else 0.0
+                    )
+                weight_total = max(0.1, sum(
+                    max(0.0, float((objective_weights or {}).get(key, 1.0))) for key in objective_keys
+                ))
+                for cand in evaluated_candidates:
+                    cand["composite_utility"] = sum(
+                        cand["objectives"][key] * max(0.0, float((objective_weights or {}).get(key, 1.0)))
+                        for key in objective_keys
+                    ) / weight_total
+                evaluated_candidates.sort(key=lambda c: c["composite_utility"], reverse=True)
 
             stage_trace.append({
                 "stage_number": 11,
@@ -620,14 +699,11 @@ class CandidateDiscoveryPipeline:
             # STAGE 13: Pareto-Optimal Candidate Identification
             # -----------------------------------------------------------------
             # Matrix of 5 objectives for NSGA-II non-dominated sorting
-            obj_matrix = np.zeros((len(evaluated_candidates), 5), dtype=np.float64)
+            obj_matrix = np.zeros((len(evaluated_candidates), len(objective_keys)), dtype=np.float64)
             for idx, cand in enumerate(evaluated_candidates):
                 objs = cand["objectives"]
-                obj_matrix[idx, 0] = objs["predicted_pdac_activity"]
-                obj_matrix[idx, 1] = objs["selectivity_index"]
-                obj_matrix[idx, 2] = objs["qed_druglikeness"]
-                obj_matrix[idx, 3] = objs["low_toxicological_risk"]
-                obj_matrix[idx, 4] = objs["applicability_domain_confidence"]
+                for col, key in enumerate(objective_keys):
+                    obj_matrix[idx, col] = objs.get(key, 0.0)
 
             fronts = self.molecular_optimizer.fast_non_dominated_sort(obj_matrix)
             pareto_front_indices = fronts[0] if fronts else []
@@ -701,14 +777,11 @@ class CandidateDiscoveryPipeline:
 
         # Final Pareto Frontier extraction across ALL evaluated compounds
         final_list = list(all_evaluated.values())
-        final_matrix = np.zeros((len(final_list), 5), dtype=np.float64)
+        final_matrix = np.zeros((len(final_list), len(objective_keys)), dtype=np.float64)
         for idx, cand in enumerate(final_list):
             objs = cand["objectives"]
-            final_matrix[idx, 0] = objs["predicted_pdac_activity"]
-            final_matrix[idx, 1] = objs["selectivity_index"]
-            final_matrix[idx, 2] = objs["qed_druglikeness"]
-            final_matrix[idx, 3] = objs["low_toxicological_risk"]
-            final_matrix[idx, 4] = objs["applicability_domain_confidence"]
+            for col, key in enumerate(objective_keys):
+                final_matrix[idx, col] = objs.get(key, 0.0)
 
         final_fronts = self.molecular_optimizer.fast_non_dominated_sort(final_matrix)
         final_pareto_indices = final_fronts[0] if final_fronts else []
@@ -727,6 +800,7 @@ class CandidateDiscoveryPipeline:
                 "mol_weight": record.mol_weight, "logp": record.logp, "qed": record.qed,
                 "risk_index": candidate["risk_index"], "pic50": candidate["pic50"],
                 "in_applicability_domain": candidate["in_applicability_domain"],
+                "tissue_simulated": candidate.get("tissue_simulated", False),
                 "objectives": candidate["objectives"], "composite_utility": candidate.get("composite_utility"),
                 "source": "Directed optimization", "epistemic_category": "Exploratory model result",
                 "is_seed": record.canonical_smiles in seed_smiles,
@@ -740,6 +814,15 @@ class CandidateDiscoveryPipeline:
             "seed_controls": [candidate_summary(c) for c in ranked if c["canonical_smiles"] in seed_smiles],
             "requested_candidate_count": candidate_count,
             "objective_weights": objective_weights or {},
+            "objective_keys": objective_keys,
+            "tissue_in_fitness": tissue_in_fitness,
+            "selection_basis": (
+                "Six objectives including simulated tumour growth inhibition; the "
+                "microenvironment model exerts selective pressure on the population."
+                if tissue_in_fitness else
+                "Five chemistry and prediction objectives. The microenvironment simulation "
+                "is a readout for the top ranked candidates and does not affect selection."
+            ),
             "disease_id": self.disease_id,
             "activity_scope": "Exploratory PDAC surrogate; not clinically validated" if self.disease_id == "PDAC" else "Chemistry-only ranking. No activity or novel-compound cellular response is available for this disease.",
             "pipeline_version": "1.1.0",

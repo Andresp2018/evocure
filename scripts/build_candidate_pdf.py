@@ -479,29 +479,61 @@ def method_section(pdf: Report, data: dict) -> None:
     )
 
     weights = settings.get("objective_weights", {})
+    closed_loop = bool(data.get("tissue_in_fitness"))
+    rows = [
+        ["Predicted PDAC activity", fmt(weights.get("predicted_pdac_activity"), 1),
+         "Calibrated QSAR regressor, sigmoidal utility at pIC50 6.0"],
+        ["Low toxicological risk", fmt(weights.get("low_toxicological_risk"), 1),
+         "Ten category structural alert and rule based risk index"],
+        ["Drug likeness (QED)", fmt(weights.get("qed_druglikeness"), 1),
+         "RDKit quantitative estimate of drug likeness"],
+        ["Selectivity index", fmt(weights.get("selectivity_index"), 1),
+         "ADMET derived tumour versus healthy cell window"],
+        ["Applicability domain", fmt(weights.get("applicability_domain_confidence"), 1),
+         "Maximum Tanimoto similarity to the training set"],
+    ]
+    if closed_loop:
+        rows.append([
+            "Simulated growth inhibition",
+            fmt(weights.get("simulated_growth_inhibition", 1.0), 1),
+            "Agent based tumour microenvironment, treated versus untreated",
+        ])
+
     pdf.h2("2.2 Objective weights")
-    pdf.table(
-        ["Objective", "Weight", "Source of the value"],
-        [62, 20, 92],
-        [
-            ["Predicted PDAC activity", fmt(weights.get("predicted_pdac_activity"), 1),
-             "Calibrated QSAR regressor, sigmoidal utility at pIC50 6.0"],
-            ["Low toxicological risk", fmt(weights.get("low_toxicological_risk"), 1),
-             "Ten category structural alert and rule based risk index"],
-            ["Drug likeness (QED)", fmt(weights.get("qed_druglikeness"), 1),
-             "RDKit quantitative estimate of drug likeness"],
-            ["Selectivity index", fmt(weights.get("selectivity_index"), 1),
-             "ADMET derived tumour versus healthy cell window"],
-            ["Applicability domain", fmt(weights.get("applicability_domain_confidence"), 1),
-             "Maximum Tanimoto similarity to the training set"],
-        ],
-        ["L", "R", "L"],
-    )
+    pdf.table(["Objective", "Weight", "Source of the value"], [62, 20, 92], rows, ["L", "R", "L"])
     pdf.small(
         "Tumour cell kill is never maximised alone. A compound that scores well on activity "
         "but triggers toxicity alerts or falls outside the applicability domain is penalised "
         "by construction."
     )
+
+    pdf.h2("2.2a What selection actually optimises")
+    if closed_loop:
+        pdf.callout(
+            "The selection loop is closed",
+            f"Every candidate that could be dosed was simulated in the tumour "
+            f"microenvironment, {data.get('tissue_simulations_run', 0)} runs in total, and "
+            "its growth inhibition entered the objective set used for Pareto sorting and "
+            "survivor selection. The tumour model therefore exerts selective pressure on "
+            "the population rather than only reporting on the winners.\n\n"
+            "Two limits on how much that is worth. All arms share one seed per generation, "
+            "so the comparison is paired but the objective is the noisiest of the six. And "
+            "the tissue model's drug response is driven by the predicted IC50, so this "
+            "objective is correlated with the activity objective rather than independent "
+            "of it. It adds diffusion, uptake, hypoxia and clonal structure on top of that "
+            "prediction; it does not replace it with a measurement.",
+            tone="info",
+        )
+    else:
+        pdf.callout(
+            "The selection loop is open",
+            "Selection used the chemistry and prediction objectives only. The tumour "
+            "simulation was computed for the top ranked candidates and recorded, but it did "
+            "not enter the objective set, so it exerted no selective pressure. The search "
+            "optimised a QSAR surrogate, and the tissue numbers in this report are a "
+            "readout of that search rather than its driver.",
+            tone="warn",
+        )
 
     pdf.h2("2.3 The QSAR model, and what it can carry")
     qsar = data.get("qsar_validation", {})
@@ -654,6 +686,11 @@ def candidate_pages(pdf: Report, data: dict) -> None:
                 ["Per seed values",
                  ", ".join(fmt(v, 1) for v in entry.get("tgi_per_replicate", []))],
                 ["Resistant clone fraction", fmt(resistant.get("mean"), 3)],
+                ["Value used as selection objective",
+                 (f"{fmt(100.0 * float(ranking['objectives']['simulated_growth_inhibition']), 1)} %"
+                  f" on the search seed"
+                  if ranking.get("objectives", {}).get("simulated_growth_inhibition") is not None
+                  else "not an objective in this run")],
                 ["Versus negative control",
                  f"{p_value_text(test.get('p_value'))}, Hedges g "
                  f"{fmt(test.get('hedges_g'), 2)}"],
@@ -751,6 +788,19 @@ def limitations_section(pdf: Report, data: dict) -> None:
          "Five candidates were tested against one control arm. The per candidate threshold is "
          "uncorrected; a Bonferroni corrected threshold would be p < 0.01, and the results "
          "file records both."),
+        ("Reference drugs and novel structures are not scored the same way",
+         "Gemcitabine's potency in the tissue model comes from curated experimental "
+         "bioactivity. A newly generated structure has no measurement, so its potency comes "
+         "from the structure-property model, which assigns micromolar values far weaker than "
+         "the positive control's. At the dose used here that difference alone is close to "
+         "sufficient to explain why no candidate matches the control. The comparison is "
+         "therefore between a measurement and a prediction, not between two compounds, and "
+         "failing to beat the control is weak evidence about the molecules."),
+        ("The tissue objective is noisy and not independent",
+         "All arms in a generation share one seed, so selection sees a single draw of a "
+         "quantity whose spread across seeds crosses zero. The objective also depends on the "
+         "potency the pharmacology model assigns, so it is correlated with the activity "
+         "objective rather than an independent check on it."),
     ]
     for title, text in items:
         pdf.set_font("Helvetica", "B", 9.3)
