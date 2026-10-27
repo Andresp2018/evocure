@@ -1,0 +1,71 @@
+{
+  "project_name": "EVOCURE",
+  "simulator_version": "0.1.0",
+  "default_interface_mode": "PLAY",
+  "default_universe_mode": "ARTIFICIAL_LIFE",
+  "default_disease_id": "PDAC",
+  "default_seed": 20261026,
+  "clocks": {
+    "steps_per_generation": 25,
+    "generations_per_virtual_year": 10.0,
+    "biological_dt_seconds": 900.0,
+    "calibration_disclaimer": "Virtual years measure abstract evolutionary cycles in the artificial universe and do not represent real-world chemical or clinical treatment durations."
+  },
+  "environment": {
+    "width": 1000.0,
+    "height": 700.0,
+    "temperature_k": 310.15,
+    "ph": 7.4,
+    "viscosity_pa_s": 0.00089,
+    "oxygen_norm": 1.0,
+    "energy_source_flux": 1.0,
+    "resource_influx_rate": 0.4,
+    "resource_clearance_rate": 0.01,
+    "current_vx": 0.05,
+    "current_vy": 0.0,
+    "boundary_permeability": 0.0,
+    "use_physical_units": true,
+    "barriers": [
+      {
+        "barrier_id": "BARRIER-MEMBRANE-CENTRAL",
+        "x1": 500.0,
+        "y1": 120.0,
+        "x2": 500.0,
+        "y2": 580.0,
+        "permeability": 0.25
+      }
+    ],
+    "regions": [
+      {
+        "region_id": "NICHE-HYDROTHERMAL-WEST",
+        "name": "Warm Catalytic Vent",
+        "x": 60.0,
+        "y": 80.0,
+        "width": 280.0,
+        "height": 540.0,
+        "temperature_delta_k": 12.0,
+        "ph_override": 6.8,
+        "oxygen_multiplier": 0.85,
+        "energy_flux": 1.65
+      },
+      {
+        "region_id": "NICHE-HOMEOSTATIC-EAST",
+        "name": "Physiological Buffer Basin",
+        "x": 620.0,
+        "y": 80.0,
+        "width": 320.0,
+        "height": 540.0,
+        "temperature_delta_k": 0.0,
+        "ph_override": 7.4,
+        "oxygen_multiplier": 1.15,
+        "energy_flux": 0.95
+      }
+    ]
+  },
+  "performance": {
+    "max_entities": 4000,
+    "max_visible_particles": 1500,
+    "checkpoint_interval_generations": 25,
+    "memory_limit_mb": 8192
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "manifest_version": "1.0.0",
+  "description": "Reference manifest for EVOCURE optional local AI artifacts. No weights are stored in this repository. Checksums were computed from the reference install used to produce the published example report.",
+  "notes": [
+    "EVOCURE runs with none of these present. Missing artifacts fall back to deterministic rule based paths.",
+    "Set EVOCURE_MODEL_MIRROR to a base URL to fetch entries whose url is null from your own mirror.",
+    "Verify what you have with: python scripts/fetch_models.py --verify"
+  ],
+  "artifacts": [
+    {
+      "id": "pdac-qsar",
+      "required_for": "Novel compound PDAC activity prediction. Without it the pipeline ranks chemistry only and reports activity as unavailable.",
+      "rebuildable": true,
+      "rebuild_command": "python scripts/train_qsar.py",
+      "license": "Derived from the CC-BY 4.0 reference dataset in this repository",
+      "url": null,
+      "homepage": null,
+      "files": [
+        {
+          "path": "models/scientific/pdac_qsar_v1.joblib",
+          "bytes": 850056,
+          "sha256": "088c53985fe5ece80dda27fb6a073c219292c1d53805ca254ea4f659c2d2955d",
+          "note": "Rebuild this rather than downloading it. Byte level identity is not expected across scikit-learn versions; the training script prints the validation metrics to compare."
+        }
+      ]
+    },
+    {
+      "id": "gemma-assistant",
+      "required_for": "Optional natural language assistant and search planner. Without it EVOCURE uses the deterministic rule based planner, which is what the published example report used.",
+      "rebuildable": false,
+      "license": "Gemma Terms of Use. Review them before downloading.",
+      "url": null,
+      "homepage": "https://huggingface.co/models?search=gemma%20gguf",
+      "files": [
+        {
+          "path": "models/gemma/Gemma-4-E2B-Heretic-Q4_K_M.gguf",
+          "bytes": 3416101728,
+          "sha256": "e5780530c5f32523a68a56128eff611c7b662ff9668f032d187a3a2e1fec3066",
+          "note": "Any Gemma class GGUF the llama.cpp runtime can load will work. Point EVOCURE_GEMMA_WEIGHTS_PATH at whichever you choose; the filename is not load bearing."
+        },
+        {
+          "path": "models/gemma/gemma4.jinja",
+          "bytes": 635,
+          "sha256": "2a27df201cb8244d9677ce13385a67c0e7011c58e4be0b39d970bf2763ee0f94",
+          "note": "Chat template. Most GGUF files embed their own template, in which case this is unnecessary."
+        }
+      ]
+    },
+    {
+      "id": "laya-decision",
+      "required_for": "Optional neural candidate triage. Without it the deterministic multi criteria triage runs, which is what the published example report used.",
+      "rebuildable": false,
+      "license": "Apache 2.0",
+      "url": null,
+      "homepage": "https://pypi.org/project/laya/",
+      "files": [
+        {
+          "path": "models/laya/multilingual/model.safetensors",
+          "bytes": 643835514,
+          "sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204"
+        },
+        {
+          "path": "models/laya/multilingual/rl_agent_config.json",
+          "bytes": 472,
+          "sha256": "25061739243b617ad88d1219ba6f8a9c86c5881ca28df024fa2d9b3b2fcc30c6"
+        },
+        {
+          "path": "models/laya/multilingual/encoder/config.json",
+          "bytes": 1938,
+          "sha256": "83f6916d13ef0f556ac461f28308dc2bffa7ebeadee8ec9e2db5812020ea5bb4"
+        },
+        {
+          "path": "models/laya/multilingual/tokenizer/tokenizer.json",
+          "bytes": 34363188,
+          "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f"
+        },
+        {
+          "path": "models/laya/multilingual/tokenizer/tokenizer_config.json",
+          "bytes": 524,
+          "sha256": "6c6b2d8e3c84ce0e671c129cd6b374b235d6f9863042a5836358d00a89bbb5a1"
+        }
+      ]
+    },
+    {
+      "id": "llama-runtime",
+      "required_for": "Optional. Runs the Gemma GGUF locally. Needed only with gemma-assistant.",
+      "rebuildable": false,
+      "license": "MIT (llama.cpp)",
+      "url": null,
+      "homepage": "https://github.com/ggml-org/llama.cpp/releases",
+      "install_dir": "models/gemma/llama_runtime/",
+      "files": [],
+      "note": "Download the build matching your GPU. CUDA for NVIDIA, HIP or Vulkan for AMD, Vulkan or SYCL for Intel, Metal for Apple. Vulkan is the most portable. Checksums are not pinned here because the correct binary differs per machine."
+    }
+  ]
+}

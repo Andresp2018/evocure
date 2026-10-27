@@ -1,0 +1,18 @@
+# Normalize to LF in the repository; check out native on each platform.
+* text=auto
+
+# Scripts that must keep their platform's endings to run at all.
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.gguf binary
+*.safetensors binary
+*.joblib binary
+*.pck binary
+*.exe binary
+*.dll binary

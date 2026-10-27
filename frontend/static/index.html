@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EVOCURE - Chemical Evolution & PDAC Tumor Simulator</title>
+  <meta name="description" content="100% local, offline, epistemically grounded chemical evolution and pancreatic cancer simulator.">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body data-palette="neon" data-font-size="normal">
+  <!-- Accessibility Skip Link -->
+  <a href="#main-workbench" class="skip-link">Skip to main content</a>
+
+  <!-- App Header / Top Navigation Bar -->
+  <header class="app-header" role="banner">
+    <div class="header-left">
+      <div class="brand-logo" aria-label="EVOCURE Home">
+        <span class="logo-icon" aria-hidden="true">⚛</span>
+        <span class="logo-text">EVOCURE</span>
+        <span class="version-badge">v1.0.0</span>
+        <span class="logo-badge" id="app-mode-badge">PLAY</span>
+      </div>
+
+      <!-- Active Disease Selector -->
+      <div class="header-disease-select">
+        <label for="select-active-disease" class="disease-label">TARGET:</label>
+        <select id="select-active-disease" class="disease-dropdown" aria-label="Select Target Disease">
+          <option value="PDAC" selected>PDAC (Pancreatic Cancer)</option>
+          <option value="NSCLC_KRAS">NSCLC KRAS G12C</option>
+          <option value="AMR_BACTERIAL">AMR (A. baumannii)</option>
+          <option value="METABOLIC_MASLD">MASLD / MASH (Liver)</option>
+        </select>
+      </div>
+
+      <!-- Mode Toggle Switch (Space or M shortcut) -->
+      <div class="mode-switch-wrapper" role="group" aria-label="Interface Mode Selector">
+        <button id="btn-mode-play" class="btn-mode active" aria-pressed="true" title="Switch to EVOCURE PLAY (Shortcut: M)">
+          <span class="icon">🎮</span> PLAY
+        </button>
+        <button id="btn-mode-lab" class="btn-mode" aria-pressed="false" title="Switch to EVOCURE LAB (Shortcut: M)">
+          <span class="icon">🔬</span> LAB
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Clocks & Telemetry Strip -->
+    <div class="header-center" role="region" aria-label="Simulation Clocks">
+      <div class="telemetry-chip" title="Active Evolutionary Step">
+        <span class="chip-label">STEP</span>
+        <span class="chip-value" id="clock-step">0</span>
+      </div>
+      <div class="telemetry-chip" title="Artificial Evolutionary Generation">
+        <span class="chip-label">GEN</span>
+        <span class="chip-value" id="clock-gen">0</span>
+      </div>
+      <div class="telemetry-chip" title="Virtual Evolutionary Years (Abstract Time)">
+        <span class="chip-label">V-YEARS</span>
+        <span class="chip-value" id="clock-vyears">0.00</span>
+      </div>
+      <div class="telemetry-chip" title="Mechanistic Biological Hours (Cellular & PK/PD Time)">
+        <span class="chip-label">BIO-HR</span>
+        <span class="chip-value" id="clock-biohours">0.0</span>
+      </div>
+      <div class="telemetry-chip" title="Universe Chemical Mode">
+        <span class="chip-label">MODE</span>
+        <span class="chip-value universe-mode-tag" id="header-universe-mode">ARTIFICIAL_LIFE</span>
+      </div>
+    </div>
+
+    <!-- Header Actions & Accessibility Controls -->
+    <div class="header-right">
+      <!-- Quick Modals -->
+      <button id="btn-open-tutorial" class="btn-header-tool" title="Open Interactive Tutorial (Shortcut: T)" aria-label="Open Interactive Tutorial">
+        <span aria-hidden="true">💡</span> Tutorial
+      </button>
+      <button id="btn-open-missions" class="btn-header-tool" title="View Educational Missions & Achievements (Shortcut: M)" aria-label="View Missions">
+        <span aria-hidden="true">🎯</span> Missions (<span id="missions-completed-badge">0/8</span>)
+      </button>
+      <button id="btn-open-glossary" class="btn-header-tool" title="Open Scientific Glossary (Shortcut: G)" aria-label="Open Glossary">
+        <span aria-hidden="true">📖</span> Glossary
+      </button>
+      <button id="btn-open-experiments" class="btn-header-tool" title="Experiments Manager (Save, Load, Export PDF)" aria-label="Experiments Manager">
+        <span aria-hidden="true">🧪</span> Experiments
+      </button>
+      <button id="btn-open-checkpoints" class="btn-header-tool" title="Checkpoints & Save State" aria-label="Checkpoints">
+        <span aria-hidden="true">💾</span> Save/Load
+      </button>
+
+      <!-- Accessibility Menu Dropdown Toggle -->
+      <div class="accessibility-dropdown">
+        <button id="btn-accessibility" class="btn-header-tool btn-icon-only" title="Accessibility & Display Settings" aria-label="Accessibility Settings" aria-expanded="false">
+          <span aria-hidden="true">⚙</span>
+        </button>
+        <div id="accessibility-menu" class="dropdown-panel hidden" role="menu">
+          <div class="menu-section">
+            <label for="select-palette" class="menu-label">Color Palette:</label>
+            <select id="select-palette" class="menu-select">
+              <option value="neon">Default Lab Neon</option>
+              <option value="okabe-ito">Okabe-Ito (Colorblind-Safe)</option>
+              <option value="high-contrast">High-Contrast Dark</option>
+            </select>
+          </div>
+          <div class="menu-section">
+            <label for="select-font-size" class="menu-label">Font Size:</label>
+            <select id="select-font-size" class="menu-select">
+              <option value="normal">Normal</option>
+              <option value="large">Large</option>
+              <option value="xl">Extra Large (XL)</option>
+            </select>
+          </div>
+          <div class="menu-section checkbox-row">
+            <label for="chk-reduced-motion">
+              <input type="checkbox" id="chk-reduced-motion"> Reduced Motion
+            </label>
+          </div>
+          <div class="menu-section checkbox-row">
+            <label for="chk-reaction-ripples">
+              <input type="checkbox" id="chk-reaction-ripples" checked> Reaction FX Ripples
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- EVOCURE PLAY CONTAINER (Decluttered, <= 3 clicks to start, 4 cards)       -->
+  <!-- ========================================================================= -->
+  <main id="play-container" class="mode-view-container active" role="main" aria-label="EVOCURE PLAY Interface">
+    <!-- Quick-Launch Hub -->
+    <section class="quick-launch-hub" aria-label="Quick Launch Hub">
+      <div class="hub-header">
+        <div class="hub-title-block">
+          <h2>Welcome to EVOCURE PLAY</h2>
+          <p>Explore artificial chemical life and fight virtual pancreatic cancer in 2 clicks. Powered by 100% local physics & RDKit chemistry.</p>
+        </div>
+        <button id="btn-surprise-me" class="btn-surprise" title="Start a unique randomized experiment instantly">
+          🎲 Surprise Me!
+        </button>
+      </div>
+
+      <!-- 4 Quick-Launch Cards -->
+      <div class="cards-grid" role="region" aria-label="Simulation Launch Presets">
+        <article class="launch-card" data-preset="chemical_life" tabindex="0" role="button" aria-label="Create Chemical Life preset">
+          <div class="card-icon">🌱</div>
+          <div class="card-content">
+            <h3>1. Create Chemical Life</h3>
+            <p>Seed prebiotic precursors (Glycine, Pyruvate, Imidazole, Adenine) and watch Brownian collisions trigger self-sustaining replicators.</p>
+            <div class="card-meta">
+              <span class="badge">Mode: Artificial Life</span>
+              <span class="badge">Brownian Physics</span>
+            </div>
+          </div>
+          <button class="btn-card-launch" tabindex="-1">Launch Universe →</button>
+        </article>
+
+        <article class="launch-card" data-preset="cancer_battle" tabindex="0" role="button" aria-label="Fight Cancer PDAC preset">
+          <div class="card-icon">🎯</div>
+          <div class="card-content">
+            <h3>2. Fight Cancer (PDAC)</h3>
+            <p>Step into a virtual 2D pancreatic tumor microenvironment with sensitive & resistant clones, desmoplastic CAFs, and hypoxic zones.</p>
+            <div class="card-meta">
+              <span class="badge">Mode: Grounded Chemistry</span>
+              <span class="badge">Cellular Hill PD</span>
+            </div>
+          </div>
+          <button class="btn-card-launch" tabindex="-1">Battle PDAC →</button>
+        </article>
+
+        <article class="launch-card" data-preset="evolve_compounds" tabindex="0" role="button" aria-label="Evolve Compounds preset">
+          <div class="card-icon">🧬</div>
+          <div class="card-content">
+            <h3>3. Evolve Compounds</h3>
+            <p>Accelerate evolutionary time across generations. Watch heritable lineage diversification, Shannon diversity, and natural selection.</p>
+            <div class="card-meta">
+              <span class="badge">Accelerated 100x</span>
+              <span class="badge">Lineage DAG</span>
+            </div>
+          </div>
+          <button class="btn-card-launch" tabindex="-1">Start Evolution →</button>
+        </article>
+
+        <article class="launch-card" data-preset="evocure_001" tabindex="0" role="button" aria-label="Explore Discoveries benchmark">
+          <div class="card-icon">🏆</div>
+          <div class="card-content">
+            <h3>4. Explore Discoveries</h3>
+            <p>Run the EVOCURE-001 reference benchmark: multi-objective NSGA-II candidate discovery tested against untreated control.</p>
+            <div class="card-meta">
+              <span class="badge">Benchmark Scenario</span>
+              <span class="badge">Pareto Frontier</span>
+            </div>
+          </div>
+          <button class="btn-card-launch" tabindex="-1">Run Benchmark →</button>
+        </article>
+      </div>
+    </section>
+
+    <!-- Interactive Play Workbench: Game Tool Palette + Viewport -->
+    <section class="play-workbench" aria-label="Interactive Play Workbench">
+      <!-- Game-like Tool Palette -->
+      <nav class="play-tools-strip" aria-label="Play Tools">
+        <button id="tool-play-add" class="btn-play-tool active" data-tool="add" title="Add Compounds (Drag or Click to spawn)">
+          <span class="icon">➕</span> Add
+        </button>
+        <button id="tool-play-select" class="btn-play-tool" data-tool="select" title="Select & Inspect Entities">
+          <span class="icon">🔍</span> Inspect
+        </button>
+        <button id="tool-play-accelerate" class="btn-play-tool" data-tool="accelerate" title="Accelerate evolutionary time">
+          <span class="icon">⚡</span> Jump 100 Gen
+        </button>
+        <button id="tool-play-compare" class="btn-play-tool" data-tool="compare" title="Compare Treated vs Control Worlds">
+          <span class="icon">⚖</span> Compare
+        </button>
+        <button id="tool-play-save" class="btn-play-tool" data-tool="save" title="Quick Save Checkpoint">
+          <span class="icon">💾</span> Bookmark
+        </button>
+
+        <!-- Jump Presets -->
+        <div class="play-jump-group" role="group" aria-label="Evolution Jump Presets">
+          <button id="btn-play-jump-10" class="btn-play-tool-sm" title="Jump 10 Generations">10G</button>
+          <button id="btn-play-jump-100" class="btn-play-tool-sm" title="Jump 100 Generations">100G</button>
+          <button id="btn-play-jump-1yr" class="btn-play-tool-sm" title="Jump 1 Virtual Year">1Yr</button>
+          <button id="btn-play-jump-10yr" class="btn-play-tool-sm" title="Jump 10 Virtual Years">10Yr</button>
+        </div>
+      </nav>
+
+      <!-- Center Play Canvas Area -->
+      <div class="play-canvas-wrapper">
+        <canvas id="play-viewport-canvas" width="1000" height="600" aria-label="Simulation Canvas Viewport"></canvas>
+        <canvas id="play-tumor-canvas" width="1000" height="600" aria-label="Cancer Battle Canvas Viewport" class="hidden"></canvas>
+
+        <!-- Floating Playback Overlay -->
+        <div class="floating-playback-bar" role="toolbar" aria-label="Playback Controls">
+          <button id="play-btn-playpause" class="btn-play-ctrl" title="Play or Pause (Spacebar)">
+            <span id="play-icon-state">▶ Play</span>
+          </button>
+          <button id="play-btn-step" class="btn-play-ctrl" title="Advance 1 Step Forward">
+            ⏭ Step
+          </button>
+          <div class="speed-toggle-group">
+            <button class="btn-speed active" data-speed="1">1x</button>
+            <button class="btn-speed" data-speed="10">10x</button>
+            <button class="btn-speed" data-speed="100">100x</button>
+          </div>
+          <div class="playback-target-toggle">
+            <button id="btn-toggle-universe-view" class="btn-target active" data-target="universe">Chemical Universe</button>
+            <button id="btn-toggle-tumor-view" class="btn-target" data-target="tumor">Cancer Battle</button>
+          </div>
+        </div>
+
+        <!-- Entity Count Badge Overlay -->
+        <div class="canvas-badge-overlay" aria-live="polite">
+          <span id="play-entity-badge">Replicators: 0</span>
+        </div>
+      </div>
+
+      <!-- Play Quick Cards Strip (Cancer Battle Summary + Quick Compound Card) -->
+      <div class="play-info-strip">
+        <!-- Simplified 4-Metric Cancer Battle Card -->
+        <div class="play-card-widget" id="widget-cancer-battle">
+          <div class="widget-header">
+            <h4>Cancer Battle (PDAC) Live Status</h4>
+            <button id="btn-play-to-lab-bio" class="btn-text-link">View Detailed Lab Indicators →</button>
+          </div>
+          <div class="metrics-quad">
+            <div class="quad-item">
+              <span class="quad-title">Viable Tumor</span>
+              <span class="quad-val" id="play-val-tumor-cells">--</span>
+            </div>
+            <div class="quad-item">
+              <span class="quad-title">Resistant Fraction</span>
+              <span class="quad-val text-warning" id="play-val-resistant-pct">--</span>
+            </div>
+            <div class="quad-item">
+              <span class="quad-title">Healthy Cell Sparing</span>
+              <span class="quad-val text-success" id="play-val-healthy-spared">--</span>
+            </div>
+            <div class="quad-item">
+              <span class="quad-title">Hypoxic Core</span>
+              <span class="quad-val text-info" id="play-val-hypoxia-pct">--</span>
+            </div>
+          </div>
+          <div class="widget-action-row">
+            <button id="btn-play-apply-gemcitabine" class="btn-action-sm">Apply Gemcitabine (5 µM)</button>
+            <button id="btn-play-run-control-comp" class="btn-action-sm">Compare vs Control</button>
+          </div>
+        </div>
+
+        <!-- Simplified Compound Quick Card -->
+        <div class="play-card-widget" id="widget-compound-quick">
+          <div class="widget-header">
+            <h4 id="play-compound-title">Selected Compound</h4>
+            <button id="btn-play-to-lab-mol" class="btn-text-link">View Technical Details →</button>
+          </div>
+          <div class="compound-quick-body">
+            <div class="quick-svg-box" id="play-compound-svg-container">
+              <span class="placeholder-text">Click any molecule or cell to inspect</span>
+            </div>
+            <div class="quick-props-box">
+              <div class="prop-line"><strong>Name:</strong> <span id="play-cmp-name">--</span></div>
+              <div class="prop-line"><strong>Formula:</strong> <span id="play-cmp-formula">--</span></div>
+              <div class="prop-line"><strong>Role:</strong> <span id="play-cmp-role">--</span></div>
+              <div class="prop-line"><strong>MW:</strong> <span id="play-cmp-mw">--</span> g/mol</div>
+              <button id="btn-play-explain-compound" class="btn-explain-plain">💡 Explain in Plain English</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Periodic Evolution Milestone Toast / Modal -->
+    <aside id="evolution-summary-toast" class="evolution-toast hidden" role="status" aria-live="polite">
+      <div class="toast-header">
+        <span class="toast-icon">✨</span>
+        <strong id="toast-title">Evolutionary Milestone</strong>
+        <button id="btn-close-toast" class="btn-close-icon" aria-label="Close notification">×</button>
+      </div>
+      <p id="toast-body">Simulation advanced. New lineages and transformations emerged.</p>
+    </aside>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- EVOCURE LAB CONTAINER (10 Scientific Tabs, Deep Inspector, Full Telemetry) -->
+  <!-- ========================================================================= -->
+  <main id="lab-container" class="mode-view-container" role="main" aria-label="EVOCURE LAB Scientific Workbench" hidden>
+    <!-- 10 LAB View Navigation Tabs -->
+    <nav class="lab-tabs-nav" role="tablist" aria-label="Scientific View Tabs">
+      <button class="lab-tab active" role="tab" aria-selected="true" data-tab="tab-universe">1. Chemical Universe</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-evolution">2. Evolution Laboratory</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-cancer-battle">3. Cancer Battle</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-tumor-microenv">4. Tumor Microenvironment</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-molecular">5. Molecular Explorer</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-family-tree">6. Family Tree DAG</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-admet">7. Toxicity & ADMET</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-biomarkers">8. Biological Indicators</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-ai-assistant">9. AI Research Assistant</button>
+      <button class="lab-tab" role="tab" aria-selected="false" data-tab="tab-comparison">10. Experiment Comparison</button>
+    </nav>
+
+    <!-- 5-Zone Workbench Layout -->
+    <div class="lab-workbench-grid">
+      <!-- Zone 1: Left Control & Library Dock -->
+      <aside class="workbench-dock dock-left" aria-label="Compound Library and Environment Controls">
+        <div class="dock-panel">
+          <div class="dock-section-title">
+            <span>📚 Compound Library</span>
+            <span class="count-pill" id="library-count-badge">30</span>
+          </div>
+
+          <!-- Search & Filter -->
+          <div class="library-search-box">
+            <input type="text" id="lib-search-input" placeholder="Search by name, SMILES, role..." aria-label="Search Compound Library">
+            <select id="lib-category-filter" aria-label="Filter by Category">
+              <option value="all">All Categories</option>
+              <option value="pdac_reference">PDAC Reference</option>
+              <option value="prebiotic">Prebiotic Precursor</option>
+              <option value="benign_control">Benign Control</option>
+            </select>
+          </div>
+
+          <!-- Draggable Library Compounds List -->
+          <ul class="library-items-list" id="library-compounds-list" aria-label="Compounds List">
+            <!-- Dynamically populated from /api/v1/library -->
+          </ul>
+
+          <!-- Environment Parameter Controls -->
+          <div class="dock-section-title" style="margin-top: 15px;">
+            <span>🌡 Environment Parameters</span>
+          </div>
+          <form id="form-environment" class="env-sliders-form">
+            <div class="slider-control">
+              <div class="slider-header">
+                <label for="slider-temp">Temperature (K):</label>
+                <span class="slider-val" id="val-temp">310.15 K</span>
+              </div>
+              <input type="range" id="slider-temp" min="273.15" max="373.15" step="0.5" value="310.15">
+            </div>
+
+            <div class="slider-control">
+              <div class="slider-header">
+                <label for="slider-ph">pH Level:</label>
+                <span class="slider-val" id="val-ph">7.40</span>
+              </div>
+              <input type="range" id="slider-ph" min="2.0" max="12.0" step="0.1" value="7.40">
+            </div>
+
+            <div class="slider-control">
+              <div class="slider-header">
+                <label for="slider-viscosity">Viscosity (Pa·s):</label>
+                <span class="slider-val" id="val-viscosity">0.00089</span>
+              </div>
+              <input type="range" id="slider-viscosity" min="0.0003" max="0.005" step="0.0001" value="0.00089">
+            </div>
+
+            <div class="slider-control">
+              <div class="slider-header">
+                <label for="slider-influx">Substrate Influx:</label>
+                <span class="slider-val" id="val-influx">0.40</span>
+              </div>
+              <input type="range" id="slider-influx" min="0.0" max="2.0" step="0.05" value="0.40">
+            </div>
+
+            <button type="submit" class="btn-action-primary" style="margin-top: 8px;">Apply Environment</button>
+          </form>
+        </div>
+      </aside>
+
+      <!-- Zone 2: Center Interactive Viewport + Tab Panes -->
+      <section class="workbench-center" aria-label="Active Simulation Workspace">
+        <!-- Tab 1: Chemical Universe -->
+        <div id="tab-universe" class="lab-tab-pane active" role="tabpanel">
+          <div class="canvas-container">
+            <canvas id="universe-canvas" width="1000" height="650" aria-label="Chemical Universe Canvas"></canvas>
+            <div class="canvas-toolbar">
+              <button id="btn-zoom-in" title="Zoom In" aria-label="Zoom In">➕</button>
+              <button id="btn-zoom-out" title="Zoom Out" aria-label="Zoom Out">➖</button>
+              <button id="btn-zoom-reset" title="Reset View" aria-label="Reset View">🔄</button>
+              <span class="zoom-badge" id="universe-zoom-badge">100%</span>
+            </div>
+            <div class="canvas-legend">
+              <span class="legend-item"><span class="shp-icon shp-circle"></span> Amino Acid</span>
+              <span class="legend-item"><span class="shp-icon shp-hex"></span> Sugar / Acid</span>
+              <span class="legend-item"><span class="shp-icon shp-diamond"></span> Catalyst</span>
+              <span class="legend-item"><span class="shp-icon shp-star"></span> Cooperator</span>
+              <span class="legend-item"><span class="shp-icon shp-ring"></span> Nutrient</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Evolution Laboratory -->
+        <div id="tab-evolution" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="evolution-lab-view">
+            <div class="sub-header-panel">
+              <h3>Darwinian Selection & Emergent Replicator Dynamics</h3>
+              <p>Simulates heritable variations, metabolic maintenance costs, and competitive niche displacement.</p>
+              <div class="action-buttons-row">
+                <button class="btn-preset-advance" data-preset="10_gen">Advance 10 Gen</button>
+                <button class="btn-preset-advance" data-preset="100_gen">Advance 100 Gen</button>
+                <button class="btn-preset-advance" data-preset="1_yr">Advance 1 Virtual Year</button>
+                <button class="btn-preset-advance" data-preset="10_yr">Advance 10 Virtual Years</button>
+              </div>
+            </div>
+            <div class="evolution-charts-grid">
+              <div class="chart-box">
+                <h4>Shannon Diversity Index Over Time</h4>
+                <canvas id="chart-diversity" width="460" height="240"></canvas>
+              </div>
+              <div class="chart-box">
+                <h4>Population & Carrying Capacity</h4>
+                <canvas id="chart-population" width="460" height="240"></canvas>
+              </div>
+            </div>
+
+            <!-- 15-Stage NSGA-II Molecular Discovery Pipeline -->
+            <div class="discovery-runner-panel">
+              <div class="discovery-panel-header">
+                <h4>🧬 NSGA-II Molecular Discovery Pipeline (15-Stage In Silico Evolution)</h4>
+                <p>Evolves molecular structures to optimize target binding affinities, minimize cellular toxicity, and adhere to Lipinski/Veber guidelines.</p>
+              </div>
+              <div class="discovery-form-row">
+                <div class="form-item">
+                  <label for="discovery-seed-select">Seed Scaffold:</label>
+                  <select id="discovery-seed-select">
+                    <option value="Gemcitabine" selected>Gemcitabine Core</option>
+                    <option value="Sotorasib">Sotorasib (KRAS G12C)</option>
+                    <option value="Adenine">Adenine Purine</option>
+                    <option value="C1=CN(C(=O)N=C1N)[C@H]2C([C@@H]([C@H](O2)CO)O)(F)F">Gemcitabine Canonical SMILES</option>
+                  </select>
+                </div>
+                <div class="form-item">
+                  <label for="discovery-generations">Generations:</label>
+                  <input type="number" id="discovery-generations" min="1" max="20" value="4">
+                </div>
+                <div class="form-item">
+                  <label for="discovery-pop-size">Population:</label>
+                  <input type="number" id="discovery-pop-size" min="4" max="64" value="16">
+                </div>
+                <button id="btn-run-nsga2-discovery" class="btn-action-primary">Run GA Discovery</button>
+                <button id="btn-run-evocure-001" class="btn-action-secondary">Run EVOCURE-001 Benchmark</button>
+              </div>
+              <div id="discovery-results-container" class="discovery-results-box hidden">
+                <div class="discovery-results-header">
+                  <h5>Pareto Optimal Candidates & QSAR Predictions</h5>
+                  <span id="discovery-status-badge" class="badge">Complete</span>
+                </div>
+                <div class="candidates-table-wrap">
+                  <table class="data-table" id="table-discovery-candidates">
+                    <thead><tr><th>Candidate</th><th>SMILES</th><th>Predicted IC50 (µM)</th><th>QED Score</th><th>SA Score</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3 & 4: Cancer Battle & Tumor Microenvironment -->
+        <div id="tab-cancer-battle" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="tumor-viewport-box">
+            <canvas id="tumor-canvas" width="1000" height="650" aria-label="Pancreatic Tumor Microenvironment Canvas"></canvas>
+            <div class="tumor-canvas-legend">
+              <span class="legend-item"><span class="tumor-dot dot-sensitive"></span> Sensitive Tumor (Classical)</span>
+              <span class="legend-item"><span class="tumor-dot dot-resistant"></span> Resistant Tumor (Basal)</span>
+              <span class="legend-item"><span class="tumor-dot dot-caf"></span> Activated CAF Stroma</span>
+              <span class="legend-item"><span class="tumor-dot dot-healthy"></span> Healthy Epithelial</span>
+              <span class="legend-item"><span class="tumor-dot dot-immune"></span> Cytotoxic T / TAM</span>
+              <span class="legend-item"><span class="tumor-dot dot-vessel"></span> Blood Vessel Path</span>
+              <span class="legend-item"><span class="tumor-dot dot-apoptotic"></span> Apoptotic / Necrotic</span>
+            </div>
+
+            <!-- 2-Drug Combination Synergy Panel -->
+            <div class="combo-synergy-panel">
+              <div class="combo-panel-header">
+                <h4>💊 2-Drug Combination Synergy & Resistance Countering</h4>
+                <p>Simulates dual-agent pharmacodynamics, calculates Bliss Excess % and Loewe Combination Index (CI), and screens for evolutionary collateral sensitivity.</p>
+              </div>
+              <div class="combo-inputs-row">
+                <div class="form-item">
+                  <label for="combo-drug-a">Drug A:</label>
+                  <select id="combo-drug-a">
+                    <option value="Gemcitabine" selected>Gemcitabine (Nucleoside)</option>
+                    <option value="Sotorasib">Sotorasib (KRAS G12C)</option>
+                    <option value="Cisplatin">Cisplatin (DNA Crosslinker)</option>
+                    <option value="Paclitaxel">Paclitaxel (Microtubule)</option>
+                    <option value="Metformin">Metformin (Mitochondrial)</option>
+                  </select>
+                  <input type="number" id="combo-dose-a" min="0.1" max="100.0" step="0.5" value="5.0" title="Dose A in µM"> µM
+                </div>
+                <div class="form-item">
+                  <label for="combo-drug-b">Drug B:</label>
+                  <select id="combo-drug-b">
+                    <option value="Sotorasib" selected>Sotorasib (KRAS G12C)</option>
+                    <option value="Gemcitabine">Gemcitabine (Nucleoside)</option>
+                    <option value="Cisplatin">Cisplatin (DNA Crosslinker)</option>
+                    <option value="Paclitaxel">Paclitaxel (Microtubule)</option>
+                    <option value="Metformin">Metformin (Mitochondrial)</option>
+                  </select>
+                  <input type="number" id="combo-dose-b" min="0.1" max="100.0" step="0.5" value="10.0" title="Dose B in µM"> µM
+                </div>
+                <button id="btn-lab-run-combo" class="btn-action-primary">Evaluate Combination Synergy</button>
+                <button id="btn-lab-run-coevolution" class="btn-action-secondary">Run Coevolution (4 Cycles)</button>
+              </div>
+              <div id="combo-results-wrapper" class="combo-results-grid hidden">
+                <div class="synergy-matrix-box">
+                  <div class="matrix-header">
+                    <h5>8x8 Dose-Response Synergy Heatmap (Bliss Excess %)</h5>
+                    <div class="synergy-stats">
+                      <span>Bliss Excess: <strong id="val-bliss-excess">--%</strong></span>
+                      <span>Loewe CI: <strong id="val-loewe-ci">--</strong></span>
+                      <span class="badge" id="badge-synergy-class">Synergistic</span>
+                    </div>
+                  </div>
+                  <canvas id="chart-synergy-matrix" width="400" height="320" aria-label="8x8 Synergy Matrix"></canvas>
+                </div>
+                <div class="trial-arms-box">
+                  <h5>4-Arm In Silico Trial Comparison (48h)</h5>
+                  <div class="arms-grid">
+                    <div class="arm-card" id="arm-control">
+                      <h6>1. Untreated Control</h6>
+                      <div class="arm-metric">Viable: <span id="arm-ctrl-viable">--</span></div>
+                      <div class="arm-note">Zero intervention</div>
+                    </div>
+                    <div class="arm-card" id="arm-monoa">
+                      <h6>2. Drug A Monotherapy</h6>
+                      <div class="arm-metric">Viable: <span id="arm-monoa-viable">--</span></div>
+                      <div class="arm-note">Single agent baseline</div>
+                    </div>
+                    <div class="arm-card" id="arm-monob">
+                      <h6>3. Drug B Monotherapy</h6>
+                      <div class="arm-metric">Viable: <span id="arm-monob-viable">--</span></div>
+                      <div class="arm-note">Single agent baseline</div>
+                    </div>
+                    <div class="arm-card highlight" id="arm-combo">
+                      <h6>4. Combination (A + B)</h6>
+                      <div class="arm-metric">Viable: <span id="arm-combo-viable">--</span></div>
+                      <div class="arm-note">Dual-target synergy</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-tumor-microenv" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="microenv-details-view">
+            <div class="sub-header-panel">
+              <h3>PDAC Biophysical & Microenvironmental Zonation</h3>
+              <p>Reaction-diffusion transport of O2 and nutrients with CAF-mediated desmoplastic ECM barrier hindrance.</p>
+            </div>
+            <div class="microenv-metrics-grid">
+              <div class="metric-card">
+                <span class="card-title">Normoxic Rim Area</span>
+                <span class="card-val" id="lab-normoxic-pct">-- %</span>
+                <span class="card-note">O2 ≥ 0.30 norm</span>
+              </div>
+              <div class="metric-card">
+                <span class="card-title">Hypoxic Mantle Area</span>
+                <span class="card-val text-warning" id="lab-hypoxic-pct">-- %</span>
+                <span class="card-note">0.08 ≤ O2 &lt; 0.30</span>
+              </div>
+              <div class="metric-card">
+                <span class="card-title">Necrotic Core Area</span>
+                <span class="card-val text-danger" id="lab-necrotic-pct">-- %</span>
+                <span class="card-note">Anoxia / Nutrient Starvation</span>
+              </div>
+              <div class="metric-card">
+                <span class="card-title">ECM Stromal Density</span>
+                <span class="card-val text-info" id="lab-ecm-density">--</span>
+                <span class="card-note">Attenuates Drug Diffusivity</span>
+              </div>
+            </div>
+
+            <!-- 4-Field Spatial Microenvironment Heatmaps -->
+            <div class="microenv-heatmaps-grid">
+              <div class="heatmap-card">
+                <h5>Oxygen (O₂) Tension Field</h5>
+                <canvas id="canvas-field-o2" width="220" height="180" aria-label="Oxygen Tension Field"></canvas>
+                <div class="heatmap-legend"><span>0.0 Anoxia</span><span>1.0 Normoxia</span></div>
+              </div>
+              <div class="heatmap-card">
+                <h5>Glucose & Nutrient Availability</h5>
+                <canvas id="canvas-field-glucose" width="220" height="180" aria-label="Glucose Field"></canvas>
+                <div class="heatmap-legend"><span>0.0 Starved</span><span>1.0 Abundant</span></div>
+              </div>
+              <div class="heatmap-card">
+                <h5>Desmoplastic ECM Density Field</h5>
+                <canvas id="canvas-field-ecm" width="220" height="180" aria-label="ECM Density Field"></canvas>
+                <div class="heatmap-legend"><span>0.0 Porous</span><span>1.0 Dense Barrier</span></div>
+              </div>
+              <div class="heatmap-card">
+                <h5>Drug Vascular Interstitial Penetration</h5>
+                <canvas id="canvas-field-drug" width="220" height="180" aria-label="Drug Penetration Field"></canvas>
+                <div class="heatmap-legend"><span>0.0 Impermeable</span><span>Peak Vascular</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Molecular Explorer -->
+        <div id="tab-molecular" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="molecular-explorer-view">
+            <div class="sub-header-panel">
+              <h3>RDKit Molecular Descriptor & Structural Scaffold Explorer</h3>
+              <div class="mol-search-row">
+                <input type="text" id="mol-explore-input" placeholder="Enter SMILES, Common Name, or Compound ID...">
+                <button id="btn-mol-explore-search" class="btn-action-primary">Inspect Structure</button>
+              </div>
+            </div>
+            <div class="mol-explorer-grid">
+              <div class="mol-svg-large" id="mol-explorer-svg">
+                <span class="placeholder-text">Structure 2D Vector Rendering</span>
+              </div>
+              <div class="mol-descriptors-table-box">
+                <table class="data-table" id="table-mol-descriptors">
+                  <thead>
+                    <tr><th>Descriptor</th><th>Value</th><th>Unit</th><th>Epistemic Provenance</th></tr>
+                  </thead>
+                  <tbody>
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Interactive 2D Molecular Structure Editor & Bioisostere Designer -->
+            <div class="molecular-editor-section">
+              <div class="editor-header">
+                <h4>🧪 Interactive 2D Molecular Structure Editor & Bioisostere Designer</h4>
+                <p>Apply substituent additions, atom swaps, and ring transformations with live RDKit 2D vector diffs and property recalculation.</p>
+              </div>
+              <div class="editor-controls-bar">
+                <div class="editor-group">
+                  <span class="ctrl-label">Add Substituents:</span>
+                  <div class="btn-group-wrap" id="editor-substituents-btns">
+                    <!-- Populated dynamically from /api/v1/editor/operations -->
+                  </div>
+                </div>
+                <div class="editor-group">
+                  <span class="ctrl-label">Core Heteroatom Swaps:</span>
+                  <div class="btn-group-wrap" id="editor-swaps-btns">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+                <div class="editor-group">
+                  <span class="ctrl-label">Ring Transformations:</span>
+                  <div class="btn-group-wrap" id="editor-rings-btns">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+                <button id="btn-editor-reset" class="btn-action-sm">Reset to Parent Scaffold</button>
+              </div>
+              <div class="editor-diff-display">
+                <div class="diff-side">
+                  <h5>Parent Scaffold</h5>
+                  <div class="svg-diff-frame" id="editor-parent-svg">
+                    <span class="placeholder-text">Parent Molecule SVG</span>
+                  </div>
+                  <div class="mol-meta-line" id="editor-parent-meta">--</div>
+                </div>
+                <div class="diff-arrow">➔</div>
+                <div class="diff-side">
+                  <h5>Edited Derivative (Highlighted Modification)</h5>
+                  <div class="svg-diff-frame" id="editor-derivative-svg">
+                    <span class="placeholder-text">Edited Molecule SVG</span>
+                  </div>
+                  <div class="mol-meta-line" id="editor-derivative-meta">--</div>
+                </div>
+              </div>
+              <div class="editor-deltas-table-box">
+                <h5>RDKit Property Deltas & QSAR Shifts</h5>
+                <table class="data-table" id="table-editor-deltas">
+                  <thead><tr><th>Property</th><th>Parent Value</th><th>Derivative Value</th><th>Delta (Δ)</th><th>Scientific Interpretation</th></tr></thead>
+                  <tbody>
+                    <tr><td colspan="5" class="text-muted">Select an operation above to inspect structural property shifts</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 6: Family Tree DAG -->
+        <div id="tab-family-tree" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="family-tree-view">
+            <div class="sub-header-panel">
+              <h3>Molecular Lineage Directed Acyclic Graph (DAG)</h3>
+              <p>Trace ancestor-descendant relationships from founder molecules to mutated variants. Extinct nodes shown dashed.</p>
+              <div class="tree-controls-row">
+                <label><input type="checkbox" id="tree-chk-extinct" checked> Include Extinct</label>
+                <div class="slider-mini">
+                  <label for="tree-similarity-slider">Min Sim: <span id="val-tree-similarity">0.0</span></label>
+                  <input type="range" id="tree-similarity-slider" min="0" max="1" step="0.05" value="0.0" style="width: 80px;">
+                </div>
+                <div class="slider-mini">
+                  <label for="tree-persistence-slider">Min Gen: <span id="val-tree-persistence">1</span></label>
+                  <input type="range" id="tree-persistence-slider" min="1" max="20" step="1" value="1" style="width: 80px;">
+                </div>
+                <button id="btn-tree-refresh" class="btn-action-sm">Refresh Tree</button>
+                <button id="btn-tree-export-json" class="btn-action-sm">Export DAG JSON</button>
+              </div>
+              <div class="tree-diff-row" style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+                <label style="font-size: 0.8rem; color: var(--text-secondary);">Diff Lineages:</label>
+                <select id="tree-select-node-a" class="menu-select" style="max-width: 180px;"><option value="">Select Node A...</option></select>
+                <select id="tree-select-node-b" class="menu-select" style="max-width: 180px;"><option value="">Select Node B...</option></select>
+                <button id="btn-tree-diff-nodes" class="btn-action-sm">Compare Structures</button>
+              </div>
+              <div id="tree-diff-result-box" class="tree-diff-container hidden" style="margin-top: 8px;"></div>
+            </div>
+            <div class="tree-canvas-box">
+              <canvas id="tree-canvas" width="1000" height="550" aria-label="Molecular Lineage Tree"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 7: Toxicity & ADMET -->
+        <div id="tab-admet" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="admet-view">
+            <div class="sub-header-panel">
+              <h3>Preclinical ADMET & Structural Toxicology Screening</h3>
+              <p>Screened against 10 tox alert categories with applicability domain verification. Zero uncalibrated clinical claims.</p>
+            </div>
+            <div class="admet-grid">
+              <div class="admet-radar-box">
+                <h4>ADMET Physicochemical Profile</h4>
+                <canvas id="chart-admet-radar" width="400" height="320"></canvas>
+              </div>
+              <div class="tox-alerts-box">
+                <h4>Screened Structural Toxicity Alerts</h4>
+                <ul class="tox-alerts-list" id="lab-tox-alerts-list">
+                  <!-- Populated dynamically -->
+                </ul>
+              </div>
+            </div>
+
+            <!-- Hill Sigmoidal Concentration-Response Curves -->
+            <div class="hill-curve-box">
+              <h4>Pharmacodynamic Concentration-Response (Hill Sigmoidal Curve)</h4>
+              <canvas id="chart-hill-curves" width="940" height="240" aria-label="Hill Concentration-Response Curve"></canvas>
+              <div class="hill-curve-legend">
+                <span class="legend-dot" style="background:#00f3ff;"></span> Sensitive Clone (IC50: <span id="val-hill-ic50-sens">--</span> µM)
+                <span class="legend-dot" style="background:#ff0055; margin-left:14px;"></span> Resistant Clone (IC50: <span id="val-hill-ic50-res">--</span> µM)
+                <span class="legend-dot" style="background:#22c55e; margin-left:14px;"></span> Healthy Epithelial (IC50: <span id="val-hill-ic50-healthy">--</span> µM)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 8: Biological Indicators -->
+        <div id="tab-biomarkers" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="biomarkers-view">
+            <div class="sub-header-panel">
+              <h3>PDAC Biological Indicators & Systemic Safety Biomarkers</h3>
+              <p>Includes CA 19-9 shedding, cellular viability, hypoxic burden, and 7-compartment PBPK exposures.</p>
+              <button id="btn-toggle-pbpk" class="btn-action-sm">Enable Systemic PBPK Kinetics</button>
+            </div>
+
+            <!-- 7-Compartment PBPK Concentration-Time Exposure Profile -->
+            <div class="pbpk-curves-box">
+              <h4>7-Compartment PBPK Concentration-Time Exposure (48-Hour Profile)</h4>
+              <canvas id="chart-pbpk-kinetics" width="940" height="220" aria-label="7-Compartment PBPK Kinetics"></canvas>
+              <div class="pbpk-legend-strip">
+                <span class="pbpk-tag" style="color:#00f3ff;">● Blood Plasma</span>
+                <span class="pbpk-tag" style="color:#f59e0b;">● Pancreas (Target)</span>
+                <span class="pbpk-tag" style="color:#ef4444;">● Liver (Metabolism)</span>
+                <span class="pbpk-tag" style="color:#10b981;">● Kidneys (Clearance)</span>
+                <span class="pbpk-tag" style="color:#8b5cf6;">● Myocardium</span>
+                <span class="pbpk-tag" style="color:#06b6d4;">● Lungs</span>
+                <span class="pbpk-tag" style="color:#94a3b8;">● Peripheral Tissue</span>
+              </div>
+            </div>
+
+            <div class="biomarkers-tables-grid">
+              <div class="bio-table-box">
+                <h4>Tumor & Cellular Markers</h4>
+                <table class="data-table" id="table-bio-tumor">
+                  <thead><tr><th>Marker</th><th>Value</th><th>Unit</th><th>Status</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="bio-table-box">
+                <h4>Systemic & Organ Safety (PBPK)</h4>
+                <table class="data-table" id="table-bio-systemic">
+                  <thead><tr><th>Indicator</th><th>Concentration</th><th>Normal Ref</th><th>Epistemic Tag</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 9: AI Research Assistant -->
+        <div id="tab-ai-assistant" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="ai-assistant-view">
+            <div class="sub-header-panel">
+              <h3>Multi-Provider AI Research Assistant & Decision Engine</h3>
+              <p>Offline-first via Local Gemma 4 (GGUF) &amp; Laya 0.3.11, with optional Google Gemini and OpenAI API providers. Never modifies parameters silently.</p>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;">
+                <select id="ai-provider-select" class="menu-select" aria-label="Active AI Provider">
+                  <option value="auto_local" selected>Auto Local (Gemma 4 / Offline Default)</option>
+                  <option value="local_gemma">Local Gemma 4 (GGUF)</option>
+                  <option value="gemini">Google Gemini API</option>
+                  <option value="openai">OpenAI API (GPT / Compatible)</option>
+                  <option value="deterministic">Deterministic Scientific Engine</option>
+                </select>
+                <input type="text" id="ai-provider-model" placeholder="Model (e.g. gemini-2.5-flash, gpt-4o-mini)" style="width:220px;">
+                <input type="password" id="ai-provider-key" placeholder="API Key (Gemini / OpenAI)" style="width:190px;" autocomplete="off">
+                <button id="btn-save-ai-provider" type="button" class="btn-action-sm">Save Provider</button>
+                <button id="btn-test-ai-provider" type="button" class="btn-action-sm">Test Connection</button>
+                <button id="btn-start-local-llm" type="button" class="btn-action-sm">Ensure Local LLM Runtime Active</button>
+              </div>
+            </div>
+
+            <!-- AI Telemetry & Triage Controls -->
+            <div class="ai-runtime-telemetry-strip">
+              <div class="ai-status-pill"><span class="lbl">Gemma 4:</span> <span id="ai-gemma-status">Local Ready (3.18 GB)</span></div>
+              <div class="ai-status-pill"><span class="lbl">Laya Neural Agent:</span> <span id="ai-laya-status">Active (PyTorch CPU)</span></div>
+              <div class="ai-status-pill"><span class="lbl">PDAC QSAR:</span> <span id="ai-qsar-status">Loaded</span></div>
+              <button id="btn-run-laya-triage" class="btn-action-sm">Run Laya Multi-Criteria Candidate Triage</button>
+            </div>
+            <div id="laya-triage-results" class="triage-results-box hidden">
+              <h5>Laya Multi-Criteria Utility Ranking</h5>
+              <div class="triage-cards-list" id="laya-triage-cards-list"></div>
+            </div>
+
+            <div class="assistant-chat-box">
+              <div class="chat-history" id="ai-chat-history" role="log" aria-live="polite">
+                <div class="chat-message bot">
+                  <div class="msg-author">EVOCURE Scientific Assistant</div>
+                  <div class="msg-body">Hello! I am your 100% local research assistant. You can ask me questions about chemical evolution, PDAC biology, drug sensitivity mechanisms, or ask me to propose and execute controlled experiments.</div>
+                  <div class="msg-tag">Epistemic: AI-generated hypothesis</div>
+                </div>
+              </div>
+              <form id="ai-chat-form" class="chat-input-row">
+                <input type="text" id="ai-chat-input" placeholder="Ask a scientific question in English..." required aria-label="AI Assistant Query">
+                <button type="submit" class="btn-action-primary">Send</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 10: Experiment Comparison -->
+        <div id="tab-comparison" class="lab-tab-pane" role="tabpanel" hidden>
+          <div class="comparison-view">
+            <div class="sub-header-panel">
+              <h3>Side-by-Side Scenario & Treatment Comparison</h3>
+              <p>Run identical deterministic seeds comparing untreated control vs. candidate compound exposure.</p>
+            </div>
+            <div class="comparison-scenario-config">
+              <div class="config-col">
+                <label for="comp-scenario-left">Scenario Left (Control):</label>
+                <select id="comp-scenario-left" class="menu-select">
+                  <option value="chemical_life" selected>Chemical Life Baseline</option>
+                  <option value="cancer_battle">Untreated PDAC Microenvironment</option>
+                </select>
+              </div>
+              <div class="config-col">
+                <label for="comp-scenario-right">Scenario Right (Treatment):</label>
+                <select id="comp-scenario-right" class="menu-select">
+                  <option value="cancer_battle" selected>PDAC + Gemcitabine Exposure</option>
+                  <option value="evolve_compounds">Accelerated Evolution (100 Gen)</option>
+                  <option value="evocure_001">EVOCURE-001 Benchmark</option>
+                </select>
+              </div>
+              <div class="config-col">
+                <label for="comp-steps-input">Simulation Steps:</label>
+                <input type="number" id="comp-steps-input" min="50" max="1000" value="150" style="width: 80px;">
+              </div>
+              <button id="btn-run-side-by-side" class="btn-action-primary">Run Comparison Experiment</button>
+            </div>
+            <div class="comparison-canvas-box" style="margin-top: 15px;">
+              <canvas id="chart-comparison-side-by-side" width="940" height="240" aria-label="Side-by-Side Comparison Chart"></canvas>
+            </div>
+            <div class="comparison-results-grid" id="comparison-results-box" style="margin-top: 15px;">
+              <div class="comp-col">
+                <h4 id="comp-left-title">Untreated Control (Seed Baseline)</h4>
+                <div class="comp-metric-line">Final Replicators: <strong id="comp-left-pop">--</strong></div>
+                <div class="comp-metric-line">Chemical Families: <strong id="comp-left-fam">--</strong></div>
+                <div class="comp-metric-line">Mean Biomass Energy: <strong id="comp-left-eng">--</strong></div>
+              </div>
+              <div class="comp-col">
+                <h4 id="comp-right-title">Candidate Exposed Scenario</h4>
+                <div class="comp-metric-line">Final Replicators: <strong id="comp-right-pop">--</strong></div>
+                <div class="comp-metric-line">Chemical Families: <strong id="comp-right-fam">--</strong></div>
+                <div class="comp-metric-line">Mean Biomass Energy: <strong id="comp-right-eng">--</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Playback Dock -->
+        <div class="lab-playback-bar" role="toolbar" aria-label="LAB Playback Controls">
+          <button id="lab-btn-playpause" class="btn-play-ctrl" title="Play or Pause">
+            <span id="lab-icon-state">▶ Play</span>
+          </button>
+          <button id="lab-btn-step" class="btn-play-ctrl" title="Step 1 Frame">⏭ Step</button>
+          <div class="speed-toggle-group">
+            <button class="btn-speed active" data-speed="1">1x</button>
+            <button class="btn-speed" data-speed="10">10x</button>
+            <button class="btn-speed" data-speed="100">100x</button>
+          </div>
+          <span class="playback-sep">|</span>
+          <span class="label-text">Clock Target:</span>
+          <button id="lab-btn-target-univ" class="btn-target active" data-target="universe">Universe Clock</button>
+          <button id="lab-btn-target-tumor" class="btn-target" data-target="tumor">Tumor Clock</button>
+        </div>
+      </section>
+
+      <!-- Zone 3: Right Entity & Compound Inspector Dock -->
+      <aside class="workbench-dock dock-right" aria-label="Entity and Compound Inspector">
+        <div class="dock-panel">
+          <div class="dock-section-title">
+            <span>🔬 Entity Inspector</span>
+            <span class="status-indicator active" id="inspector-status-badge">READY</span>
+          </div>
+
+          <div class="inspector-svg-container" id="inspector-svg-box">
+            <span class="placeholder-text">Click any molecule on canvas to view 2D vector structure</span>
+          </div>
+
+          <div class="inspector-details-box">
+            <h4 id="insp-cmp-name">No Entity Selected</h4>
+            <div class="epistemic-badge" id="insp-epistemic-tag">Calculated Physicochemical</div>
+            <div class="insp-prop-grid">
+              <div class="insp-prop"><span class="lbl">ID:</span> <span class="val" id="insp-id">--</span></div>
+              <div class="insp-prop"><span class="lbl">SMILES:</span> <span class="val font-mono" id="insp-smiles">--</span></div>
+              <div class="insp-prop"><span class="lbl">Formula:</span> <span class="val" id="insp-formula">--</span></div>
+              <div class="insp-prop"><span class="lbl">MW:</span> <span class="val" id="insp-mw">--</span></div>
+              <div class="insp-prop"><span class="lbl">LogP:</span> <span class="val" id="insp-logp">--</span></div>
+              <div class="insp-prop"><span class="lbl">TPSA:</span> <span class="val" id="insp-tpsa">--</span></div>
+              <div class="insp-prop"><span class="lbl">QED:</span> <span class="val" id="insp-qed">--</span></div>
+              <div class="insp-prop"><span class="lbl">Scaffold:</span> <span class="val font-mono" id="insp-scaffold">--</span></div>
+            </div>
+
+            <div class="inspector-actions">
+              <button id="btn-insp-spawn-more" class="btn-action-sm">Spawn Instances (+12)</button>
+              <button id="btn-insp-add-to-tumor" class="btn-action-sm">Test on PDAC Tumor</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Zone 4: Bottom Real-Time Canvas Charts & Timeline Dock -->
+    <footer class="workbench-bottom" aria-label="Real-time Telemetry and Checkpoint Timeline">
+      <div class="bottom-dock-content">
+        <div class="telemetry-chart-container">
+          <div class="chart-header-row">
+            <span class="chart-title">Real-Time Kinetics: Population & Diversity</span>
+            <span class="chart-legend"><span class="dot-legend dot-pop"></span> Population  <span class="dot-legend dot-rxn"></span> Reactions</span>
+          </div>
+          <canvas id="bottom-realtime-chart" width="900" height="90"></canvas>
+        </div>
+
+        <div class="checkpoint-timeline-container">
+          <div class="timeline-header">
+            <span>Checkpoints & Bookmarks</span>
+            <button id="btn-quick-create-ckpt" class="btn-text-link">+ Create Bookmark</button>
+          </div>
+          <div class="timeline-strip" id="checkpoint-timeline-strip">
+            <!-- Timeline markers -->
+          </div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODALS & ACCESSIBLE DIALOGS                                               -->
+  <!-- ========================================================================= -->
+
+  <!-- 1. Interactive 10-Step Tutorial Modal -->
+  <div id="modal-tutorial" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="tutorial-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="tutorial-modal-title">EVOCURE Interactive Tutorial</h3>
+        <button class="btn-close-modal" aria-label="Close tutorial">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="tutorial-progress-bar">
+          <div class="progress-fill" id="tutorial-progress-fill" style="width: 10%;"></div>
+        </div>
+        <div class="tutorial-step-indicator" id="tutorial-step-counter">Step 1 of 10</div>
+        <h4 id="tutorial-step-title" class="tutorial-heading">Welcome to the Chemical Universe</h4>
+        <p id="tutorial-step-body" class="tutorial-text">This 2D world simulates real molecular descriptors, Brownian physics, and evolution - locally on your machine.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-tut-skip" class="btn-action-secondary">Skip Tutorial</button>
+        <div class="footer-right">
+          <button id="btn-tut-prev" class="btn-action-secondary" disabled>← Previous</button>
+          <button id="btn-tut-next" class="btn-action-primary">Next Step →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Missions & Achievements Drawer -->
+  <div id="drawer-missions" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="missions-drawer-title">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="missions-drawer-title">Educational Missions & Discovery Diary</h3>
+        <button class="btn-close-modal" aria-label="Close missions">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="drawer-tabs">
+          <button class="btn-drawer-tab active" data-drawer-tab="missions-list-box">8 Missions</button>
+          <button class="btn-drawer-tab" data-drawer-tab="achievements-list-box">Achievements & Diary</button>
+        </div>
+
+        <div id="missions-list-box" class="drawer-pane active">
+          <div class="missions-grid" id="missions-container">
+            <!-- Populated dynamically from /api/v1/missions-glossary -->
+          </div>
+        </div>
+
+        <div id="achievements-list-box" class="drawer-pane hidden">
+          <div class="achievements-grid" id="achievements-container">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Scientific Glossary Modal -->
+  <div id="modal-glossary" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="glossary-modal-title">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="glossary-modal-title">Scientific Glossary & Epistemic Framework</h3>
+        <button class="btn-close-modal" aria-label="Close glossary">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="glossary-search-box">
+          <input type="text" id="glossary-search-input" placeholder="Search glossary terms (e.g. Apoptosis, Hypoxia, Pareto, Diffusion)..." aria-label="Search Glossary">
+        </div>
+        <div class="glossary-items-container" id="glossary-container">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Save/Load Checkpoint Modal -->
+  <div id="modal-checkpoints" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="checkpoints-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="checkpoints-modal-title">Experiment Checkpoints & State Bookmarks</h3>
+        <button class="btn-close-modal" aria-label="Close checkpoints">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="ckpt-create-row">
+          <input type="text" id="ckpt-label-input" placeholder="Enter checkpoint bookmark label..." aria-label="Checkpoint Label">
+          <button id="btn-create-ckpt-action" class="btn-action-primary">Save Bookmark</button>
+        </div>
+        <h4 style="margin-top: 15px;">Saved Checkpoints:</h4>
+        <ul class="checkpoints-list" id="saved-checkpoints-list">
+          <!-- Dynamically populated -->
+        </ul>
+        <h4 style="margin-top: 15px;">Export Current State:</h4>
+        <div class="export-buttons-row">
+          <a id="link-export-json" class="btn-export" href="/api/v1/export/latest/json" download="evocure_experiment.json">JSON</a>
+          <a id="link-export-csv" class="btn-export" href="/api/v1/export/latest/csv" download="evocure_telemetry.csv">CSV</a>
+          <a id="link-export-sdf" class="btn-export" href="/api/v1/export/latest/sdf" download="evocure_molecules.sdf">SDF</a>
+          <a id="link-export-report" class="btn-export" href="/api/v1/export/latest/report" download="evocure_report.md">Markdown Report</a>
+          <a id="link-export-pdf" class="btn-export" href="/api/v1/export/latest/pdf" download="evocure_report.pdf">PDF</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Experiments Manager Modal -->
+  <div id="modal-experiments" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="experiments-modal-title">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h3 id="experiments-modal-title">🧪 Experiments Manager & In Silico Trials</h3>
+        <button class="btn-close-modal" aria-label="Close experiments">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="exp-save-panel">
+          <div class="exp-save-row">
+            <input type="text" id="exp-save-title" placeholder="Enter experiment title (e.g. KRAS G12C + Gemcitabine Combination Screen)..." aria-label="Experiment Title">
+            <button id="btn-save-exp-action" class="btn-action-primary">Save Current Session</button>
+          </div>
+        </div>
+        <h4 style="margin-top: 15px;">Saved Experiments & In Silico Trials:</h4>
+        <div class="experiments-table-wrap">
+          <table class="data-table" id="saved-experiments-table">
+            <thead>
+              <tr><th>Title / ID</th><th>Created</th><th>Steps</th><th>Entities</th><th>Actions</th><th>Export</th></tr>
+            </thead>
+            <tbody>
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Accessible Plain English Explanation Modal -->
+  <div id="modal-explain-compound" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="explain-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="explain-modal-title">💡 Plain English Scientific Explanation</h3>
+        <button class="btn-close-modal" aria-label="Close explanation">×</button>
+      </div>
+      <div class="modal-body">
+        <h4 id="explain-compound-heading" class="explain-name" style="color: var(--accent-cyan); margin-bottom: 8px;">Molecule Name</h4>
+        <div id="explain-compound-body" class="explain-body-text" style="line-height: 1.6; font-size: 0.95rem;">Loading explanation...</div>
+        <div id="explain-compound-tag" class="epistemic-badge" style="margin-top: 14px;">Epistemic: Grounded Biochemical Knowledge</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action-primary btn-close-modal">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accessible Toast Notification Container -->
+  <div id="global-toast-container" class="toast-stack" aria-live="polite"></div>
+
+  <!-- Local Script Dependencies (Zero CDNs, 100% Offline) -->
+  <script src="/static/js/canvas_universe.js"></script>
+  <script src="/static/js/canvas_tumor.js"></script>
+  <script src="/static/js/charts_and_tree.js"></script>
+  <script src="/static/js/play_mode.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

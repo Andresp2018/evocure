@@ -1,0 +1,65 @@
+# ---------------------------------------------------------------------------
+# AI model weights and runtimes are NEVER committed.
+# Fetch or rebuild them locally: python scripts/fetch_models.py --help
+# ---------------------------------------------------------------------------
+models/*
+!models/README.md
+!models/manifest.json
+
+# Secrets. .env.example is committed; .env is not.
+.env
+*.key
+*.pem
+secrets.json
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Desktop client binaries, rebuilt with scripts/export_desktop.py
+build/
+*.pck
+*.x86_64
+*.exe
+*.dll
+*.so
+*.dylib
+!scripts/*.exe
+
+# Local experiment state and databases
+experiments/
+checkpoints/
+data/processed/
+data/raw/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Generated run output. The published example report is force added.
+reports/*
+!reports/.gitkeep
+!reports/EVOCURE_PDAC_Candidate_Report.pdf
+
+# Godot editor state
+godot_frontend/.godot/
+godot_frontend/android/
+*.translation
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

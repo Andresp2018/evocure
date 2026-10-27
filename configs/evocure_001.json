@@ -1,0 +1,54 @@
+{
+  "experiment_code": "EVOCURE-001",
+  "title": "Chemical Evolution and Response of a Virtual Pancreatic Tumor (PDAC)",
+  "simulator_version": "1.0.0",
+  "epistemic_notice": "Computational hypothesis-generation experiment. Artificial chemical life is a mathematical abstraction; PDAC cellular and ADMET outputs are mechanistic/predictive estimates, never clinical proof.",
+  "scenario_a_open_evolution": {
+    "scenario_id": "EVOCURE-001-A",
+    "name": "Experiment A - Open Artificial Chemical Evolution",
+    "universe_mode": "ARTIFICIAL_LIFE",
+    "seed": 42,
+    "generations": 60,
+    "steps_per_generation": 20,
+    "initial_compounds": [
+      {"name": "Glycine", "count": 28, "role": "autotroph"},
+      {"name": "Pyruvic Acid", "count": 24, "role": "autotroph"},
+      {"name": "Imidazole", "count": 16, "role": "catalyst"},
+      {"name": "Adenine", "count": 18, "role": "cooperator"},
+      {"name": "Formaldehyde", "count": 40, "role": "nutrient"}
+    ],
+    "mutation_rate": 0.14,
+    "scientific_questions": [
+      "Do heritable lineages diversify and occupy distinct spatial niches?",
+      "Does differential resource uptake and catalysis select dominant chemical families?",
+      "Are extinct lineages and ancestor-descendant mutations accurately preserved in the genealogy?"
+    ]
+  },
+  "scenario_b_directed_discovery": {
+    "scenario_id": "EVOCURE-001-B",
+    "name": "Experiment B - Directed Molecular Optimization & Controlled PDAC Evaluation",
+    "universe_mode": "GROUNDED_CHEMISTRY",
+    "disease_id": "PDAC",
+    "seed": 1337,
+    "optimization_generations": 8,
+    "population_size": 24,
+    "seed_scaffolds": [
+      "Nc1ccn([C@@H]2O[C@H](CO)[C@@H](O)C2(F)F)c(=O)n1",
+      "O=c1[nH]cc(F)c(=O)[nH]1",
+      "COc1cc2ncnc(Nc3cccc(C#C)c3)c2cc1OCCOC",
+      "CC(=O)Oc1ccccc1C(=O)O"
+    ],
+    "reference_positive_control": "Gemcitabine",
+    "reference_negative_control": "D-Glucose",
+    "applied_concentration_um": 5.0,
+    "tumor_simulation_hours": 48.0,
+    "objectives": [
+      "predicted_pdac_activity",
+      "selectivity_index",
+      "qed_druglikeness",
+      "low_toxicological_risk",
+      "applicability_domain_confidence"
+    ],
+    "validation_gate": "Exploratory candidate ranking only begins after verifying that known reference active Gemcitabine outperforms untreated control and benign metabolite D-Glucose under identical initial conditions."
+  }
+}

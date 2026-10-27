@@ -1,0 +1,188 @@
+{
+  "missions": [
+    {
+      "mission_id": "M01",
+      "order": 1,
+      "title": "Mission 1 - The First Molecules",
+      "subtitle": "Introduce simple compounds and observe Brownian motion and collisions.",
+      "goal_metric": "entities_added",
+      "goal_target": 3,
+      "preset_mode": "ARTIFICIAL_LIFE",
+      "what_model_captures": "Thermal Brownian motion scaled by temperature and viscosity, elastic collisions, and local concentration fields.",
+      "what_remains_unknown": "Full quantum-mechanical electronic orbitals and explicit solvent hydrogen-bond networks are abstracted."
+    },
+    {
+      "mission_id": "M02",
+      "order": 2,
+      "title": "Mission 2 - Resource Competition",
+      "subtitle": "Seed two artificial lineages in a shared basin and watch competition for limited substrate.",
+      "goal_metric": "families_competing",
+      "goal_target": 2,
+      "preset_mode": "ARTIFICIAL_LIFE",
+      "what_model_captures": "Differential substrate uptake, energetic maintenance cost, and competitive exclusion.",
+      "what_remains_unknown": "Artificial replicators represent an abstract toy chemistry, not living biological cells."
+    },
+    {
+      "mission_id": "M03",
+      "order": 3,
+      "title": "Mission 3 - 100 Generations of Evolution",
+      "subtitle": "Accelerate evolutionary time across 100 generations and inspect the emerging family tree.",
+      "goal_metric": "evolutionary_generation",
+      "goal_target": 100,
+      "preset_mode": "ARTIFICIAL_LIFE",
+      "what_model_captures": "Heritable trait variation, lineage branching, extinction events, and Shannon diversity.",
+      "what_remains_unknown": "Virtual generations do not map linearly onto geological or clinical timescales."
+    },
+    {
+      "mission_id": "M04",
+      "order": 4,
+      "title": "Mission 4 - Environmental Survival",
+      "subtitle": "Shift temperature or pH and observe which chemical families persist across niches.",
+      "goal_metric": "env_shift_survived",
+      "goal_target": 1,
+      "preset_mode": "ARTIFICIAL_LIFE",
+      "what_model_captures": "Arrhenius thermal sensitivity, pH rate modulation, and niche-specific persistence.",
+      "what_remains_unknown": "Macroscopic phase transitions and precipitation kinetics are simplified."
+    },
+    {
+      "mission_id": "M05",
+      "order": 5,
+      "title": "Mission 5 - The Virtual Pancreatic Tumor",
+      "subtitle": "Open the 2D PDAC microenvironment and observe tumor proliferation, stromal CAFs, and hypoxia.",
+      "goal_metric": "tumor_steps_observed",
+      "goal_target": 10,
+      "preset_mode": "GROUNDED_CHEMISTRY",
+      "what_model_captures": "Oxygen/nutrient reaction-diffusion, hypoxic core formation, desmoplastic CAF stroma, and heterogeneous subclones.",
+      "what_remains_unknown": "A 2D tissue slice cannot replicate whole-organ vascular architecture, metastasis, or patient immunology."
+    },
+    {
+      "mission_id": "M06",
+      "order": 6,
+      "title": "Mission 6 - Controlled Compound Testing",
+      "subtitle": "Compare an untreated control tumor against a reference compound under identical initial conditions.",
+      "goal_metric": "controlled_comparison_run",
+      "goal_target": 1,
+      "preset_mode": "GROUNDED_CHEMISTRY",
+      "what_model_captures": "Free vs. protein-bound concentration, stromal diffusion hindrance, and concentration-dependent apoptosis.",
+      "what_remains_unknown": "In silico cell-kill never proves human clinical safety or therapeutic benefit."
+    },
+    {
+      "mission_id": "M07",
+      "order": 7,
+      "title": "Mission 7 - Clonal Resistance",
+      "subtitle": "Observe how sensitive and resistant PDAC subclones respond differently to selective pressure.",
+      "goal_metric": "resistance_observed",
+      "goal_target": 1,
+      "preset_mode": "GROUNDED_CHEMISTRY",
+      "what_model_captures": "Efflux-mediated lower intracellular exposure and competitive expansion of less sensitive subclones.",
+      "what_remains_unknown": "Real clinical resistance involves complex epigenetic, stromal, and systemic adaptations."
+    },
+    {
+      "mission_id": "M08",
+      "order": 8,
+      "title": "Mission 8 - Multi-Objective Balance",
+      "subtitle": "Balance predicted antitumor activity, selectivity over healthy cells, ADMET, and toxicological uncertainty.",
+      "goal_metric": "pareto_evaluation_completed",
+      "goal_target": 1,
+      "preset_mode": "GROUNDED_CHEMISTRY",
+      "what_model_captures": "Pareto trade-offs between potency, healthy-cell sparing, solubility, and structural toxicity alerts.",
+      "what_remains_unknown": "Computational rankings only prioritize hypotheses for wet-lab testing; they never establish clinical dosing."
+    }
+  ],
+  "achievements": [
+    {
+      "achievement_id": "ACH-FIRST-REACTION",
+      "title": "First Valid Transformation",
+      "description": "Observed a stoichiometrically conserved chemical reaction in the 2D universe.",
+      "category": "exploration"
+    },
+    {
+      "achievement_id": "ACH-CENTURY-LINEAGE",
+      "title": "Deep Lineage Historian",
+      "description": "Evolved an ecosystem past 100 generations and traced a molecule back to its founder.",
+      "category": "evolution"
+    },
+    {
+      "achievement_id": "ACH-RIGOROUS-CONTROL",
+      "title": "Controlled Experimentation",
+      "description": "Ran a side-by-side untreated control before interpreting compound effects.",
+      "category": "scientific_rigor"
+    },
+    {
+      "achievement_id": "ACH-SELECTIVITY-GUARDIAN",
+      "title": "Selectivity Over Raw Potency",
+      "description": "Evaluated healthy epithelial cell sparing and toxicological uncertainty alongside tumor inhibition.",
+      "category": "scientific_rigor"
+    },
+    {
+      "achievement_id": "ACH-PARETO-EXPLORER",
+      "title": "Pareto Frontier Navigator",
+      "description": "Completed a multi-objective NSGA-II candidate optimization run within the applicability domain.",
+      "category": "discovery"
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Mutation",
+      "simple": "A structural or heritable change that produces a new variant.",
+      "technical": "Stochastic operator altering heritable replicator traits (Mode A) or applying RDKit valence-validated structural edits (Mode B)."
+    },
+    {
+      "term": "Natural Selection",
+      "simple": "Some variants persist and leave more descendants than others under environmental constraints.",
+      "technical": "Emergent differential reproduction and survival arising from resource uptake, catalytic rate, and decay kinetics."
+    },
+    {
+      "term": "Cytotoxicity",
+      "simple": "The capacity of a substance to damage or kill cells (including healthy cells).",
+      "technical": "Concentration-dependent loss of cellular viability quantified via Hill Emax/IC50 pharmacodynamics across target and non-target cells."
+    },
+    {
+      "term": "Tumor Resistance",
+      "simple": "The ability of certain cancer cells to survive despite exposure to a compound.",
+      "technical": "Multi-factor attenuation of drug response driven by efflux pumps, pathway alterations (e.g., KRAS/TP53/CDKN2A/SMAD4 context), and stromal shielding."
+    },
+    {
+      "term": "Diffusion",
+      "simple": "The natural spreading of molecules from higher to lower concentration.",
+      "technical": "Fickian spatial transport governed by dC/dt = D * Laplacian(C), scaled by Stokes-Einstein diffusivity and ECM hindrance."
+    },
+    {
+      "term": "Apoptosis",
+      "simple": "Controlled, programmed cell death.",
+      "technical": "Regulated cellular death pathway triggered when intracellular pharmacodynamic stress exceeds clone-specific survival thresholds."
+    },
+    {
+      "term": "Hypoxia",
+      "simple": "Regions inside a tissue or tumor with dangerously low oxygen levels.",
+      "technical": "Microenvironmental zones where cellular O2 consumption outpaces vascular diffusive supply (local normalized O2 < 0.30)."
+    },
+    {
+      "term": "Bioavailability & Free Fraction",
+      "simple": "Only the unbound fraction of a compound can freely cross membranes and reach its target.",
+      "technical": "Distinction between applied concentration C_applied, unbound extracellular C_free = fu * C_total, and intracellular AUC."
+    },
+    {
+      "term": "Applicability Domain (AD)",
+      "simple": "Whether a new molecule is structurally similar enough to known data for a model's estimate to be trustworthy.",
+      "technical": "Nearest-neighbor Morgan fingerprint Tanimoto similarity threshold against the reference training set."
+    },
+    {
+      "term": "Pareto Frontier",
+      "simple": "The set of best-balanced candidates where improving one goal would worsen another.",
+      "technical": "Non-dominated solution set under NSGA-II multi-objective optimization across potency, selectivity, QED, toxicity risk, and AD confidence."
+    }
+  ],
+  "tutorial_steps": [
+    {"step": 1, "title": "Welcome to the Chemical Universe", "body": "This 2D world simulates real molecular descriptors, Brownian physics, and evolution - locally on your machine."},
+    {"step": 2, "title": "Add Your First Compound", "body": "Pick a molecule from the left library (or drag it onto the canvas) to introduce it into the environment."},
+    {"step": 3, "title": "Start Simulation Time", "body": "Press Play or Step to watch Brownian motion, diffusion fields, and molecular collisions unfold."},
+    {"step": 4, "title": "Observe Chemical Reactions", "body": "When compatible molecules collide with sufficient energy, they transform or form complexes under explicit rules."},
+    {"step": 5, "title": "Inspect Any Entity", "body": "Click any particle or cell on the canvas to view its 2D chemical structure, properties, and epistemic tags."},
+    {"step": 6, "title": "Explore the Family Tree", "body": "Open the Family Tree view to trace descendants back to their founder molecules, including extinct lineages."},
+    {"step": 7, "title": "Accelerate Generations", "body": "Use 10x, 100x, or batch evolution presets (100+ generations) to study long-term selection and diversity."},
+    {"step": 8, "title": "Enter Cancer Battle (PDAC)", "body": "Switch to Cancer Battle to inspect a virtual pancreatic tumor with sensitive clones, resistant clones, CAFs, and hypoxia."},
+    {"step": 9, "title": "Compare Control vs. Exposure", "body": "Run Compare Worlds to test a compound against an untreated control with the exact same random seed."},
+    {"step": 10, "title": "Save & Switch PLAY <-> LAB", "body": "Save reproducible checkpoints anytime, and toggle between PLAY and LAB at the top bar without losing state!"}
+  ]
+}
