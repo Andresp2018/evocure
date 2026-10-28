@@ -351,6 +351,12 @@ living.
   output of `python -m simulation.core.acceleration` into an issue.
 - Additional disease models following the `DiseaseModule` contract.
 
+### Where this is going
+
+[docs/ROADMAP.md](docs/ROADMAP.md) sets out the work in priority order, with the
+measurements behind each item. The short version: data first, because the potency
+estimator is data limited and everything else is downstream of it.
+
 ### One ground rule
 
 Keep the epistemic labelling intact. A pull request that reports a number without its

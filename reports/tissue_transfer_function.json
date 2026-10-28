@@ -1,0 +1,128 @@
+{
+  "dose_um": 5.0,
+  "duration_hours": 24.0,
+  "seeds": [
+    20261027,
+    20261028,
+    20261029
+  ],
+  "grid": {
+    "nx": 36,
+    "ny": 28
+  },
+  "curve": [
+    {
+      "ic50_um": 0.01,
+      "tgi_mean_pct": 92.91,
+      "tgi_sd_pct": 3.25,
+      "tgi_per_seed": [
+        94.29,
+        89.19,
+        95.24
+      ]
+    },
+    {
+      "ic50_um": 0.03,
+      "tgi_mean_pct": 90.53,
+      "tgi_sd_pct": 3.3,
+      "tgi_per_seed": [
+        94.29,
+        89.19,
+        88.1
+      ]
+    },
+    {
+      "ic50_um": 0.1,
+      "tgi_mean_pct": 73.74,
+      "tgi_sd_pct": 3.44,
+      "tgi_per_seed": [
+        77.14,
+        70.27,
+        73.81
+      ]
+    },
+    {
+      "ic50_um": 0.3,
+      "tgi_mean_pct": 67.71,
+      "tgi_sd_pct": 3.08,
+      "tgi_per_seed": [
+        68.57,
+        70.27,
+        64.29
+      ]
+    },
+    {
+      "ic50_um": 1.0,
+      "tgi_mean_pct": 43.98,
+      "tgi_sd_pct": 13.98,
+      "tgi_per_seed": [
+        40.0,
+        32.43,
+        59.52
+      ]
+    },
+    {
+      "ic50_um": 2.0,
+      "tgi_mean_pct": 25.14,
+      "tgi_sd_pct": 19.47,
+      "tgi_per_seed": [
+        14.29,
+        13.51,
+        47.62
+      ]
+    },
+    {
+      "ic50_um": 5.0,
+      "tgi_mean_pct": 4.44,
+      "tgi_sd_pct": 15.26,
+      "tgi_per_seed": [
+        0.0,
+        -8.11,
+        21.43
+      ]
+    },
+    {
+      "ic50_um": 10.0,
+      "tgi_mean_pct": 4.02,
+      "tgi_sd_pct": 13.15,
+      "tgi_per_seed": [
+        8.57,
+        -10.81,
+        14.29
+      ]
+    },
+    {
+      "ic50_um": 30.0,
+      "tgi_mean_pct": -6.31,
+      "tgi_sd_pct": 10.92,
+      "tgi_per_seed": [
+        0.0,
+        -18.92,
+        0.0
+      ]
+    },
+    {
+      "ic50_um": 100.0,
+      "tgi_mean_pct": -4.5,
+      "tgi_sd_pct": 7.8,
+      "tgi_per_seed": [
+        0.0,
+        -13.51,
+        0.0
+      ]
+    }
+  ],
+  "method": "Every pharmacology parameter except the IC50 triple is held fixed at the profile of a single carrier compound, so the curve isolates the tissue model's response to assigned potency alone.",
+  "published_candidates": {
+    "n": 5,
+    "ic50_min_um": 0.066,
+    "ic50_max_um": 0.1143,
+    "spread_fold": 1.73,
+    "potency_provenance": [
+      "calibrated_qsar"
+    ]
+  },
+  "qsar_conformal_q_95_log_units": 3.1237,
+  "qsar_interval_fold": 1329.5,
+  "spread_vs_uncertainty": "The candidates are separated by less than the uncertainty in any one of their potencies."
+}

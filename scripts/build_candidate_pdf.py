@@ -325,6 +325,58 @@ def cover_page(pdf: Report, data: dict) -> None:
     pdf.cover = False
 
 
+def load_transfer_curve() -> dict | None:
+    """The measured response of the tissue model to assigned potency, if present."""
+    path = RESULTS.parent.parent / "tissue_transfer_function.json"
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        return None
+
+
+def transfer_section(pdf: Report, data: dict) -> None:
+    transfer = load_transfer_curve()
+    if not transfer:
+        return
+
+    pdf.h2("2.5 What the tissue model contributes")
+    pdf.body(
+        "Holding every pharmacology parameter fixed except the assigned IC50 isolates "
+        "the tissue model's own contribution to telling compounds apart. The curve below "
+        "is that contribution in full, at the dose used in this report."
+    )
+    rows = [[
+        fmt(point["ic50_um"], 3),
+        fmt(point["tgi_mean_pct"], 1),
+        fmt(point["tgi_sd_pct"], 1),
+    ] for point in transfer.get("curve", [])]
+    pdf.table(
+        [f"Assigned IC50 (uM)", "Growth inhibition %", "SD across seeds"],
+        [56, 60, 58], rows, ["R", "R", "R"],
+    )
+
+    published = transfer.get("published_candidates") or {}
+    interval = transfer.get("qsar_interval_fold")
+    if published and interval:
+        pdf.callout(
+            "The ranking is finer than the measurement it rests on",
+            f"At a fixed dose the response saturates well below the applied "
+            f"concentration and collapses above it, so growth inhibition behaves close "
+            f"to a threshold on whatever potency the model was handed.\n\n"
+            f"The {published.get('n', 0)} candidates in this report span IC50 "
+            f"{fmt(published.get('ic50_min_um'), 4)} to "
+            f"{fmt(published.get('ic50_max_um'), 4)} uM, a factor of "
+            f"{fmt(published.get('spread_fold'), 1)}. The potency model that produced "
+            f"those values carries a 95% conformal interval of a factor of "
+            f"{interval:,.0f}. Ordering compounds by a 1.7 fold difference inside a "
+            f"1330 fold uncertainty is not a ranking anyone should act on.\n\n"
+            f"Reproduce with scripts/measure_tissue_transfer.py.",
+            tone="warn",
+        )
+
+
 def summary_section(pdf: Report, data: dict) -> None:
     pdf.add_page()
     pdf.h1("1. Summary")
@@ -374,12 +426,24 @@ def summary_section(pdf: Report, data: dict) -> None:
     )
 
     if modelled:
-        pdf.small(
-            "The third arm is the same positive control molecule with its curated "
-            "bioactivity withheld, so its potency comes from the structure-property model "
-            "that scores every generated candidate. It is the only arm the candidates can "
-            "fairly be compared against."
-        )
+        provenances = {c.get("potency_provenance") for c in data.get("candidates", [])}
+        if provenances == {"calibrated_qsar"}:
+            pdf.small(
+                "The third arm is the same positive control molecule with its curated "
+                "bioactivity withheld, so its potency comes from the structure-property "
+                "heuristic. Note that the candidates in this run are scored by the "
+                "calibrated QSAR instead, so this arm is no longer a like for like "
+                "comparator for them. It still shows how far a potency source can move "
+                "the same molecule: 179 fold here, from separating cleanly to not "
+                "separating at all."
+            )
+        else:
+            pdf.small(
+                "The third arm is the same positive control molecule with its curated "
+                "bioactivity withheld, so its potency comes from the structure-property "
+                "model that scores every generated candidate. It is the only arm the "
+                "candidates can fairly be compared against."
+            )
 
     separated_controls = data.get("assay_validity", {}).get("assay_separates_controls")
     pdf.callout(
@@ -479,6 +543,30 @@ def summary_section(pdf: Report, data: dict) -> None:
     else:
         corrected = data.get("candidates_separating_bonferroni", [])
         names = ", ".join(ascii_only(s).replace("_", " ") for s in separated)
+
+        provenances = {c.get("potency_provenance") for c in candidates}
+        transfer = load_transfer_curve()
+        if provenances == {"calibrated_qsar"} and transfer:
+            published = transfer.get("published_candidates") or {}
+            spread = published.get("spread_fold")
+            interval = transfer.get("qsar_interval_fold")
+            pdf.callout(
+                "What separation means when potency is predicted, not measured",
+                f"Every candidate above draws its potency from the calibrated QSAR, not "
+                f"from a measurement. The tissue model then converts that potency into "
+                f"growth inhibition, so these results restate the QSAR's prediction "
+                f"through a simulation rather than testing it.\n\n"
+                f"Two numbers decide how much weight that carries. The five candidates "
+                f"span a factor of {fmt(spread, 1)} in assigned IC50. The QSAR's own 95% "
+                f"conformal interval is a factor of {interval:,.0f} on any single "
+                f"compound. The candidates are therefore ranked on differences far "
+                f"smaller than the uncertainty in any one of them, and the p values "
+                f"below describe the reproducibility of the simulation across seeds, not "
+                f"confidence in the underlying potency.\n\n"
+                f"Section 2.5 shows the tissue model's full response to assigned potency, "
+                f"which is what these separations are made of.",
+                tone="warn",
+            )
         if corrected:
             detail = (
                 f"{len(corrected)} of those survived Bonferroni correction for "
@@ -647,6 +735,8 @@ def method_section(pdf: Report, data: dict) -> None:
         "predicted IC50, so two compounds with the same predicted IC50 produce the same "
         "trajectory. Simulated growth inhibition is a property of this model, not a measurement."
     )
+
+    transfer_section(pdf, data)
 
 
 def candidate_pages(pdf: Report, data: dict) -> None:

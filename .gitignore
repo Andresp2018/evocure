@@ -52,6 +52,7 @@ reports/*
 !reports/EVOCURE_PDAC_Candidate_Report.pdf
 !reports/potency_asymmetry.json
 !reports/potency_estimator_study.json
+!reports/tissue_transfer_function.json
 
 # Godot editor state
 godot_frontend/.godot/
