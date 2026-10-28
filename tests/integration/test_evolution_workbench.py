@@ -227,3 +227,39 @@ def test_local_gemma_planning_uses_constrained_json_payload(monkeypatch):
     assert json.loads(result)["priorities"] == ["safety"]
     assert seen["response_format"] == {"type": "json_object"}
     assert seen["chat_template_kwargs"]["enable_thinking"] is False
+
+
+def test_health_endpoint_works_without_any_gpu(monkeypatch):
+    """A machine with no GPU must not break the API.
+
+    The telemetry contract returns gpu=None rather than omitting the key, so a
+    .get("gpu", {}) default does not protect callers. That exact mistake shipped
+    and only surfaced on a GPU-less CI runner, because every development machine
+    here has a card.
+    """
+    import ai.orchestration.registry as registry_module
+    from simulation.core import hardware
+
+    monkeypatch.setattr(hardware, "detect_gpus", lambda: [])
+    monkeypatch.setattr(hardware, "primary_gpu", lambda: None)
+    monkeypatch.setenv("EVOCURE_COMPUTE", "cpu")
+
+    telemetry = registry_module.get_ai_registry().get_hardware_telemetry()
+    assert telemetry["gpu"] is None
+    assert telemetry["gpus"] == []
+
+    client = TestClient(app)
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    payload = response.json()
+    accel = payload.get("ai_status", {}).get("hardware_accel")
+    assert accel, "health endpoint must report an accelerator string even with no GPU"
+
+
+def test_compute_doctor_runs_without_a_gpu(monkeypatch):
+    monkeypatch.setenv("EVOCURE_COMPUTE", "cpu")
+    report = compute_status()
+    assert report["gpu_available"] is False
+    assert report["gpu_name"] is None
+    assert report["numerical_backend"] == "NumPy CPU float64"
+    assert report["precision"] == "float64"

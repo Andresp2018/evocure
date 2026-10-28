@@ -93,7 +93,7 @@ def detect_system_telemetry() -> dict[str, str]:
         from ai.orchestration.registry import get_ai_registry
         reg = get_ai_registry()
         hw = reg.get_hardware_telemetry()
-        gpu = hw.get("gpu", {})
+        gpu = hw.get("gpu") or {}
         if gpu and gpu.get("name"):
             info["gpu"] = f"{gpu.get('name')} ({round(gpu.get('vram_total_mb', 0)/1024.0, 1)} GB VRAM)"
     except Exception:

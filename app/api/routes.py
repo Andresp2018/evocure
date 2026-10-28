@@ -86,7 +86,9 @@ async def get_health() -> HealthResponse:
         ai_runtime=ai_runtime,
         ai_status={
             "models_registered": len(ai_ledger.get("models", {})),
-            "hardware_accel": hw_telemetry.get("gpu", {}).get("name", "Host CPU"),
+            # The key is always present and is None on a machine with no GPU, so a
+            # default on .get would not protect this.
+            "hardware_accel": (hw_telemetry.get("gpu") or {}).get("name", "Host CPU"),
             "qsar_model": "pdac_qsar_v1.joblib",
             "gemma_llm_status": ai_runtime.get("gemma", {}).get("status", "local_ready"),
         },
