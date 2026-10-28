@@ -42,6 +42,7 @@ from simulation.core.contracts import (
 from simulation.evolution.molecular_ga import DirectedMolecularOptimizer
 from simulation.pharmacology.admet import (
     PharmacologyEngine,
+    qsar_potency_hint,
     validate_for_biomedical_mode,
 )
 from simulation.toxicity.models import ToxicologyEngine
@@ -595,7 +596,14 @@ class CandidateDiscoveryPipeline:
                     # the pharmacology model made the optimiser and the judge disagree by
                     # more than an order of magnitude, so selection chased a target that
                     # was never measured.
-                    response = self.pharmacology_engine.predict_antitumor_activity(comp)
+                    hint = qsar_potency_hint(self.qsar_predictor, comp)
+                    response = self.pharmacology_engine.predict_antitumor_activity(
+                        comp, qsar_pred=hint)
+                    cand["potency_provenance"] = (
+                        "curated_experimental_bioactivity" if comp.reference_bioactivity
+                        else ("calibrated_qsar" if hint is not None
+                              else "structure_property_heuristic")
+                    )
                     usable = True
                     for key in ("ic50_sensitive_um", "ic50_resistant_um", "ic50_healthy_um", "hill_slope"):
                         value = response.get(key, {})
@@ -801,6 +809,7 @@ class CandidateDiscoveryPipeline:
                 "risk_index": candidate["risk_index"], "pic50": candidate["pic50"],
                 "in_applicability_domain": candidate["in_applicability_domain"],
                 "tissue_simulated": candidate.get("tissue_simulated", False),
+                "potency_provenance": candidate.get("potency_provenance"),
                 "objectives": candidate["objectives"], "composite_utility": candidate.get("composite_utility"),
                 "source": "Directed optimization", "epistemic_category": "Exploratory model result",
                 "is_seed": record.canonical_smiles in seed_smiles,

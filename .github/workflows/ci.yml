@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Cheap guards that should fail in seconds, not after a 20 minute suite.
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No model weights or secrets committed
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -Ei '\.(gguf|safetensors|joblib|pt|pth|onnx)$'; then
+            echo "::error::Model weights must not be committed. See models/README.md"
+            exit 1
+          fi
+          if git ls-files | grep -E '^\.env$'; then
+            echo "::error::.env must not be committed"
+            exit 1
+          fi
+          echo "No weights, no .env."
+
+      - name: No long dashes in text files
+        run: |
+          set -euo pipefail
+          # The project writes plain hyphens; em and en dashes are not used.
+          if git ls-files '*.md' '*.py' '*.json' '*.txt' '*.toml' '*.yml' \
+             | xargs grep -lP '[\x{2013}\x{2014}]' 2>/dev/null; then
+            echo "::error::Long dashes found. Use a plain hyphen."
+            exit 1
+          fi
+          echo "Clean."
+
+  test:
+    name: Tests on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    needs: hygiene
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    env:
+      # The CPU path is the reproducibility reference and needs no accelerator.
+      EVOCURE_COMPUTE: cpu
+      # Optional neural weights are not installed on CI, so use the deterministic path.
+      EVOCURE_DISABLE_LAYA_NEURAL: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # Core plus test deps only. The local-ai extra (torch, laya, transformers)
+          # is optional at runtime and is deliberately not installed here, which also
+          # exercises the fallback paths on every push.
+          pip install ".[dev]"
+
+      - name: Rebuild the QSAR model from the committed dataset
+        run: python scripts/train_qsar.py
+
+      - name: Compute backend doctor
+        run: python -m simulation.core.acceleration
+
+      - name: Test suite
+        run: python -m pytest -q --durations=10
+
+  report:
+    name: Example report regenerates
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 45
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    env:
+      EVOCURE_COMPUTE: cpu
+      EVOCURE_DISABLE_LAYA_NEURAL: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
+
+      - name: Rebuild the QSAR model
+        run: python scripts/train_qsar.py
+
+      - name: Run the screening experiment
+        run: python scripts/run_pdac_report_experiment.py
+
+      - name: Build the PDF
+        run: python scripts/build_candidate_pdf.py
+
+      - name: Upload the regenerated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-report
+          path: |
+            reports/EVOCURE_PDAC_Candidate_Report.pdf
+            reports/pdac_publication_test/experiment_results.json
+          retention-days: 30

@@ -945,7 +945,12 @@ class EVOCUREEngine:
                     return profile, {"status": "exploratory reference-anchored model", "source": reference["name"],
                                      "note": "Disease-specific reference parameters are model assumptions; they are not a validated prediction for a patient."}
             raise ValueError(f"No disease-specific response model is available for this compound in {self.disease_id}. Structural similarity alone cannot supply one.")
-        response = self.pharmacology.predict_antitumor_activity(record)
+        # Offer the calibrated QSAR for structures that have no curated bioactivity.
+        # predict_antitumor_activity still prefers curated measurement when present,
+        # so reference drugs are unaffected and only novel structures change path.
+        from simulation.pharmacology.admet import qsar_potency_hint
+        hint = qsar_potency_hint(getattr(self, "qsar", None), record)
+        response = self.pharmacology.predict_antitumor_activity(record, qsar_pred=hint)
         for key in ("ic50_sensitive_um", "ic50_resistant_um", "ic50_healthy_um", "hill_slope"):
             value = response.get(key, {})
             raw = value.get("value") if isinstance(value, dict) else value
@@ -957,9 +962,25 @@ class EVOCUREEngine:
         profile["emax"] = float(emax) * self.tumor_module.emax_default
         profile["selectivity_index"] = profile["ic50_healthy_um"] / max(0.001, profile["ic50_sensitive_um"])
         profile["fraction_unbound_plasma"] = profile["fraction_unbound_plasma"]["value"]
+        category = response["ic50_sensitive_um"].get("epistemic_category")
+        if record.reference_bioactivity:
+            provenance = "curated_experimental_bioactivity"
+        elif hint is not None:
+            provenance = "calibrated_qsar"
+        else:
+            provenance = "structure_property_heuristic"
         info = {"status": "exploratory", "source": response["ic50_sensitive_um"]["source"],
                 "ic50_sensitive_um": profile["ic50_sensitive_um"], "maximum_kill_rate_per_second": profile["emax"],
+                "potency_provenance": provenance,
+                "epistemic_category": category,
                 "note": "Uncalibrated tissue response model; reference-associated or structure-property parameters are hypotheses, not clinical evidence."}
+        if provenance == "calibrated_qsar" and hint is not None:
+            info["conformal_q_95_log_units"] = hint.get("conformal_q_95")
+            info["potency_caveat"] = (
+                "Potency comes from the calibrated QSAR, which orders compounds but does "
+                "not measure them. Its 95% conformal interval spans orders of magnitude in "
+                "IC50, and that uncertainty is not propagated through the tissue simulation."
+            )
         return profile, info
 
     def run_tumor_controlled_comparison(

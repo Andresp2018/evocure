@@ -135,3 +135,138 @@ def plan_guided_search(prompt, assistant=None):
         "explanation": "The search generates RDKit-valid variants and ranks measured model outputs using these priorities. The AI guides the search policy; it does not supply efficacy values. Artificial universe parameters are unchanged.",
         "limitation": "Produces experimental candidates, not cures. Drug matching covers the local reference library only." + (" This disease has no novel-compound activity predictor: ranking uses physicochemical properties, risk alerts and domain similarity only; cellular efficacy is not simulated." if disease != "PDAC" else " Activity uses an exploratory PDAC surrogate, not clinical validation."),
     }
+
+
+@lru_cache(maxsize=1)
+def local_structure_corpus():
+    """Every distinct structure EVOCURE holds locally, for prior art checks.
+
+    Combines the curated compound library with the reference bioactivity dataset.
+    This is around 120 structures, which is a sanity check and emphatically not a
+    prior art search; see the caveat returned by assess_local_novelty.
+    """
+    from rdkit.Chem.Scaffolds import MurckoScaffold
+    import json
+    from pathlib import Path
+
+    generator = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+    corpus: dict[str, dict] = {}
+
+    def add(name, smiles, source, category=""):
+        mol = Chem.MolFromSmiles(smiles) if smiles else None
+        if mol is None:
+            return
+        canonical = Chem.MolToSmiles(mol, isomericSmiles=True)
+        if canonical in corpus:
+            return
+        try:
+            scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol)
+        except Exception:
+            scaffold = ""
+        corpus[canonical] = {
+            "name": name, "source": source, "category": category,
+            "canonical_smiles": canonical,
+            "connectivity": Chem.MolToSmiles(mol, isomericSmiles=False),
+            "scaffold": scaffold,
+            "inchikey": Chem.MolToInchiKey(mol),
+            "fingerprint": generator.GetFingerprint(mol),
+        }
+
+    for entry in COMPOUND_LIBRARY:
+        add(entry.get("name", "unnamed"), entry.get("smiles"),
+            "EVOCURE compound library", entry.get("category", ""))
+
+    dataset = Path(__file__).resolve().parents[2] / "data" / "reference" / "pdac_reference_dataset.json"
+    if dataset.is_file():
+        payload = json.loads(dataset.read_text(encoding="utf-8"))
+        for entry in payload.get("compounds", []):
+            add(entry.get("name", "unnamed"), entry.get("canonical_smiles"),
+                "Curated reference dataset", entry.get("disease_id", ""))
+
+    return list(corpus.values())
+
+
+def assess_local_novelty(compound, top_n: int = 5) -> dict:
+    """Compare a structure against everything held locally.
+
+    Answers "does something like this already exist here", which is the most that
+    can be established offline. It cannot answer whether the structure is new to
+    the world: that needs PubChem, ChEMBL, SureChEMBL and a patent search.
+    """
+    mol = Chem.MolFromSmiles(compound.canonical_smiles)
+    if mol is None:
+        raise ValueError("Candidate has no valid molecular structure")
+
+    from rdkit.Chem.Scaffolds import MurckoScaffold
+
+    generator = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+    fingerprint = generator.GetFingerprint(mol)
+    canonical = Chem.MolToSmiles(mol, isomericSmiles=True)
+    connectivity = Chem.MolToSmiles(mol, isomericSmiles=False)
+    inchikey = Chem.MolToInchiKey(mol)
+    try:
+        scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol)
+    except Exception:
+        scaffold = ""
+
+    corpus = local_structure_corpus()
+    scored = []
+    for entry in corpus:
+        similarity = float(DataStructs.TanimotoSimilarity(fingerprint, entry["fingerprint"]))
+        scored.append({
+            "name": entry["name"], "source": entry["source"], "category": entry["category"],
+            "canonical_smiles": entry["canonical_smiles"],
+            "similarity": round(similarity, 4),
+            "exact_match": entry["canonical_smiles"] == canonical,
+            "same_connectivity": entry["connectivity"] == connectivity,
+            "same_scaffold": bool(scaffold) and entry["scaffold"] == scaffold,
+            # First block of an InChIKey is the skeleton; a match means the same
+            # constitution ignoring stereochemistry and protonation.
+            "same_skeleton": entry["inchikey"][:14] == inchikey[:14],
+        })
+    scored.sort(key=lambda m: (m["exact_match"], m["similarity"]), reverse=True)
+
+    exact = next((m["name"] for m in scored if m["exact_match"]), None)
+    skeleton = next((m["name"] for m in scored if m["same_skeleton"] and not m["exact_match"]), None)
+    scaffold_hits = [m["name"] for m in scored if m["same_scaffold"]][:5]
+    best = scored[0]["similarity"] if scored else 0.0
+
+    if exact:
+        classification = "Already present locally: exact structural match"
+    elif skeleton:
+        classification = "Same skeleton as a known compound; differs in stereochemistry or charge"
+    elif best >= 0.85:
+        classification = "Very close analogue of a known compound"
+    elif best >= 0.70:
+        classification = "Close analogue of a known compound"
+    elif best >= 0.40:
+        classification = "Related to known chemistry, clearly distinct structure"
+    else:
+        classification = "No close relative in the local corpus"
+
+    return {
+        "corpus_size": len(corpus),
+        "corpus_scope": (
+            "EVOCURE compound library plus the curated reference dataset. Roughly 120 "
+            "structures held locally."
+        ),
+        "max_similarity": round(best, 4),
+        "exact_match": exact,
+        "same_skeleton_match": skeleton,
+        "same_scaffold_matches": scaffold_hits,
+        "classification": classification,
+        "nearest": scored[:max(1, min(20, top_n))],
+        "method": (
+            "RDKit Morgan fingerprint, radius 2, 2048 bits, Tanimoto similarity. Exact "
+            "identity uses canonical isomeric SMILES; skeleton identity uses the first "
+            "InChIKey block; scaffold identity uses Bemis-Murcko."
+        ),
+        "caveat": (
+            "This searches roughly 120 local structures. It is a sanity check, not a prior "
+            "art search. A structure absent here may still be published, catalogued or "
+            "patented, and nothing in this result establishes that it is new. Confirming "
+            "novelty requires PubChem, ChEMBL, SureChEMBL and a patent search, none of "
+            "which run offline. Similarity to an active drug does not transfer that "
+            "drug's activity, and distance from one is not evidence of anything."
+        ),
+    }

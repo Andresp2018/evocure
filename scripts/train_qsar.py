@@ -71,25 +71,33 @@ def main() -> int:
     destination = Path(args.output) if args.output else predictor.DEFAULT_MODEL_PATH
     saved = predictor.save(destination)
 
-    print("\n  Scaffold split validation (Bemis-Murcko, no scaffold leakage):")
-    for key in ("train_compounds", "test_compounds", "scaffold_leakage",
-                "rmse", "r2", "roc_auc", "brier_score", "conformal_q_95"):
-        if key in metrics:
-            print(f"    {key:20s} {metrics[key]}")
+    validation = metrics.get("validation_metrics", metrics)
+    print("\n  Bemis-Murcko scaffold validation (no scaffold leakage):")
+    for key in ("validation_scheme", "independent_scaffolds", "train_compounds",
+                "test_compounds", "rmse", "r2", "roc_auc", "brier_score",
+                "conformal_q_95"):
+        if key in validation:
+            print(f"    {key:22s} {validation[key]}")
 
     print(f"\n  Saved to       : {saved}")
     print(f"  Size           : {saved.stat().st_size / 1024:.1f} KB")
 
-    r2 = metrics.get("r2")
-    quantile = metrics.get("conformal_q_95")
+    r2 = validation.get("r2")
+    quantile = validation.get("conformal_q_95")
     print("\n  Read these numbers before trusting any potency value this model emits.")
-    if isinstance(r2, (int, float)) and r2 < 0.5:
-        print(f"    The pIC50 regressor explains little variance (R2 = {r2}). Treat predicted")
-        print("    potency as a coarse ordering signal, not a measurement.")
+    if isinstance(r2, (int, float)):
+        if r2 < 0.5:
+            print(f"    The pIC50 regressor explains little variance (R2 = {r2}). Treat predicted")
+            print("    potency as a coarse ordering signal, not a measurement.")
+        else:
+            print(f"    The regressor carries real ordering signal (R2 = {r2}), but see the")
+            print("    interval below before reading any single value as a quantity.")
     if isinstance(quantile, (int, float)) and quantile > 1.5:
-        print(f"    The 95% conformal interval is +/- {quantile} log units, which spans orders")
-        print("    of magnitude in IC50. Rank ordering is more defensible than any single value.")
+        print(f"    The 95% conformal interval is +/- {quantile} log units, still orders of")
+        print("    magnitude in IC50. Rank ordering is far more defensible than point values.")
     print("    The active/inactive classifier is the stronger half of this model.")
+    print("    These come from repeated grouped CV. A single scaffold split on 43 compounds")
+    print("    returns anything from R2 -0.09 to 0.82 depending only on the seed.")
     print("=" * 78)
     return 0
 

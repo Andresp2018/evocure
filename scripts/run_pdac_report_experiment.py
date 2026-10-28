@@ -41,7 +41,11 @@ from scipy import stats
 from simulation.core.engine import EVOCUREEngine
 from simulation.core.acceleration import status as compute_status
 from simulation.discovery.pipeline import CandidateDiscoveryPipeline
-from simulation.discovery.workbench import plan_guided_search, compare_drugs
+from simulation.discovery.workbench import (
+    assess_local_novelty,
+    compare_drugs,
+    plan_guided_search,
+)
 
 OUT = ROOT / "reports" / "pdac_publication_test"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -124,9 +128,15 @@ def main():
     # to let a local Gemma server propose the search priorities instead.
     use_llm_planner = os.environ.get("EVOCURE_REPORT_USE_LLM_PLANNER") == "1"
     plan = plan_guided_search(PROMPT, engine.assistant if use_llm_planner else None)
+    # Deeper or wider runs are configurable so a long search can be reproduced
+    # exactly. Cost is dominated by the tissue simulations in the closed loop, at
+    # roughly one second per dosable candidate per generation.
+    generations = int(os.environ.get("EVOCURE_REPORT_GENERATIONS", "4"))
+    population = int(os.environ.get("EVOCURE_REPORT_POPULATION", "24"))
+
     settings = {
-        "seed_queries": plan["seed_queries"], "generations": 4,
-        "population_size": 24, "top_k_cellular": 1,
+        "seed_queries": plan["seed_queries"], "generations": generations,
+        "population_size": population, "top_k_cellular": 1,
         "applied_concentration_um": 5.0, "duration_hours": 24.0,
         "seed": SEED, "objective_weights": plan["objective_weights"],
         "candidate_count": 5,
@@ -148,7 +158,7 @@ def main():
     (OUT / "pipeline_results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 
     report = {
-        "report_id": "EVOCURE-PDAC-20261027",
+        "report_id": os.environ.get("EVOCURE_REPORT_ID", "EVOCURE-PDAC-20261027"),
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "purpose": (
             "Exploratory software verification and candidate prioritisation. Not evidence "
@@ -220,8 +230,10 @@ def main():
             },
             "qsar": engine.qsar.predict(record.canonical_smiles),
             "drug_comparison": comparison,
+            "local_novelty": assess_local_novelty(record, top_n=6),
             "tissue_profile": profile,
             "tissue_model_info": info,
+            "potency_provenance": info.get("potency_provenance"),
             "replicates": trials,
             "tgi_per_replicate": tgi,
             "summary": {

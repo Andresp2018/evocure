@@ -207,8 +207,12 @@ This platform is built so that its limits are visible in its output rather than 
 a disclaimer. Specifically:
 
 - Predicted potency carries a conformal interval, and on the current training set that
-  interval is wide enough that pIC50 is usable as a loose ordering signal and nothing
-  more. The report says so on the page where the numbers appear.
+  interval is wide enough that pIC50 is usable as an ordering signal and nothing more.
+  The report says so on the page where the numbers appear.
+- Validation metrics come from repeated scaffold-grouped cross validation, not a single
+  split. On 43 compounds a single split leaves about ten test points and returns
+  anything from R2 -0.09 to 0.82 depending only on the seed. Earlier releases quoted one
+  such draw; `scripts/investigate_potency_estimator.py` documents the correction.
 - Every tissue run is compared against an untreated arm with the same seed, replicated
   across several seeds, and tested against a negative control. A point estimate without
   that comparison is not reported as an effect.
@@ -248,22 +252,113 @@ your backend, your library versions and your results file.
 
 ---
 
-## Contributing
+## Scientific collaboration needed
 
-Useful contributions, roughly in order of value:
+This platform is engineered but not validated. The code runs, the tests pass and the
+reporting is honest about its own limits, which is precisely why the remaining gaps are
+scientific rather than technical. Three concrete challenges, each with the measurement
+that defines it and what finishing it would look like.
 
-1. Experimental calibration of the tissue model parameters against published data.
-2. A larger, better curated bioactivity training set, which is the binding constraint on
-   the QSAR model today.
-3. Verification on AMD, Intel and Apple hardware. The vendor neutral backend was written
-   against the documented PyTorch APIs for each and exercised on NVIDIA; the other paths
-   are implemented but have not been run on real hardware by the maintainers. Reports of
-   `python -m simulation.core.acceleration` output from other vendors are welcome.
-4. Additional disease models following the `DiseaseModule` contract.
+If you work on any of these, the entry point is an issue describing what you measured.
+Negative results are as welcome as positive ones and will be published the same way.
+
+### Challenge 1. Validate and calibrate the QSAR and the biological simulations
+
+**Where it stands.** The PDAC potency model trains on 43 compounds spanning 32
+independent Bemis-Murcko scaffolds. Under repeated scaffold-grouped cross validation it
+reaches RMSE 1.34 log units, R2 0.70 and ROC AUC 0.95, with a 95% conformal interval of
+3.12 log units. That interval is a factor of roughly 1300 on IC50, so the model orders
+compounds and does not measure them. The tissue model's kinetics, diffusion constants and
+clonal parameters have never been fitted to experimental pancreatic tumour data at all.
+
+**Why it is the binding constraint.** A learning curve over held-out scaffolds shows RMSE
+falling from 2.04 to 1.04 as training scaffolds rise from 8 to 27, and still descending
+steeply at the current size. The estimator is data limited, not architecture limited.
+Reproduce it with `python scripts/investigate_potency_estimator.py`.
+
+**What would help.**
+- An assay-homogeneous PDAC cytotoxicity set substantially larger than 43 compounds.
+  PANC-1 and MIA PaCa-2 IC50 values from ChEMBL and GDSC are the obvious source. Order of
+  magnitude extrapolation suggests 200 scaffolds would bring the conformal interval from
+  a factor of 1300 to something near 30, which is the difference between ranking
+  compounds and saying something about them.
+- Calibration of the tissue model against published spheroid or organoid dose response
+  data, so that simulated growth inhibition means something outside this software.
+- Propagation of QSAR uncertainty through the tissue simulation. At present a point IC50
+  enters the simulation and the interval is dropped, which flatters the output.
+
+**Done looks like.** A fitted model with its validation protocol, a dataset with
+provenance per record, and a statement of what the conformal interval became.
+
+### Challenge 2. Improve molecular generation and evolutionary optimisation
+
+**Where it stands.** The generator applies RDKit point mutations over nine functional
+groups, bioisosteric substitutions and BRICS fragment crossover, selected by NSGA-II over
+six objectives with the tumour simulation in the loop. A published run evaluates around
+110 unique structures across four generations.
+
+**Why that is small.** Established molecular optimisation studies operate at 10^4 to 10^6
+evaluations. At 10^2 the search barely leaves the seed scaffolds, which is visible in the
+results: candidates cluster at Tanimoto 0.6 to the seed drug. The platform has also never
+been benchmarked against the standard baselines, so its generator's quality relative to
+GB-GA, REINVENT or a SELFIES method is simply unknown.
+
+**What would help.**
+- A GuacaMol or MOSES benchmark run, so the generator can be compared to published
+  baselines rather than described in isolation.
+- Richer transformations: ring opening and closing, scaffold hopping, a larger
+  bioisostere table, matched molecular pair transformations.
+- Scaling the search. The tissue objective costs roughly one second per candidate per
+  generation and currently dominates; surrogate-assisted or multi-fidelity selection
+  would let the population grow by orders of magnitude.
+- Diversity preservation. NSGA-II crowding distance operates on objective space, not
+  chemical space, so the population converges structurally.
+
+**Done looks like.** A benchmark number against a published baseline, or a demonstrated
+increase in explored chemical diversity at equal compute.
+
+### Challenge 3. Chemical plausibility, synthesizability and experimental validation
+
+**Where it stands.** Generated structures are RDKit-valid and pass valence checks. That
+is the entire plausibility assessment. There is no synthetic accessibility scoring, no
+retrosynthetic analysis, no stability or reactivity screening, and no check for
+pan-assay interference. Some published candidates are chemically odd on inspection, for
+example nucleoside analogues fused into dimers that no chemist would propose.
+
+**Why it matters.** A ranked list whose members cannot be made, or would decompose, or
+would trigger every assay they touch, is not a shortlist. Chemical judgement is the
+filter this platform most obviously lacks, and it is the one that cannot be automated
+away.
+
+**What would help.**
+- Synthetic accessibility scoring (SAscore, SCScore or RAscore) as a search objective,
+  not merely a report column.
+- Retrosynthetic feasibility on the top candidates, through AiZynthFinder or ASKCOS.
+- PAINS and reactive substructure filters applied during generation rather than after.
+- A medicinal chemist's written review of a published candidate list, including the ones
+  that are obviously wrong and why. This is genuinely valuable and needs no code.
+- A realistic proposal for what first experimental validation would look like: which
+  assay, which cell lines, what a negative result would rule out, and what it would cost.
+
+**Done looks like.** A filter that removes implausible structures before they are ranked,
+or a written assessment of a published list from someone who makes molecules for a
+living.
+
+### Also useful
+
+- Verification on AMD, Intel and Apple hardware. The vendor-neutral backend was written
+  against each vendor's documented PyTorch API and exercised only on NVIDIA. Paste the
+  output of `python -m simulation.core.acceleration` into an issue.
+- Additional disease models following the `DiseaseModule` contract.
+
+### One ground rule
 
 Keep the epistemic labelling intact. A pull request that reports a number without its
-uncertainty, or that presents a simulation result as an experimental finding, will be
-asked to change that before anything else.
+uncertainty, or presents a simulation result as an experimental finding, will be asked to
+change that before anything else is discussed. The same standard applies to results that
+favour the project: two defects found during development, fabricated descriptors in the
+coevolution engine and a selection loop that excluded the tumour model, both survived
+because the output looked reasonable.
 
 ---
 

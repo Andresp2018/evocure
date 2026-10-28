@@ -115,6 +115,50 @@ def validate_for_biomedical_mode(
     }
 
 
+def qsar_potency_hint(qsar_predictor: Any, compound: Any) -> dict[str, Any] | None:
+    """Build the calibrated-QSAR input for predict_antitumor_activity, or None.
+
+    Without this, a novel structure falls through to the exploratory
+    structure-property heuristic, which is measurably worse: under repeated
+    scaffold-grouped cross validation the heuristic scores RMSE 2.34 log units
+    against the QSAR's 1.34, and its reachable output range cannot span the
+    curated potencies of reference drugs at all.
+
+    Returns None when the predictor is missing, the structure is outside the
+    applicability domain, or no usable IC50 comes back, so the caller keeps the
+    heuristic rather than substituting a prediction nobody can stand behind.
+    Curated experimental bioactivity still takes precedence over whatever this
+    returns; see the precedence rules in predict_antitumor_activity.
+    """
+    if qsar_predictor is None or not getattr(qsar_predictor, "is_fitted", False):
+        return None
+    smiles = getattr(compound, "canonical_smiles", None)
+    if not smiles:
+        return None
+
+    try:
+        prediction = qsar_predictor.predict(smiles)
+    except Exception:
+        return None
+
+    if not prediction.get("in_applicability_domain"):
+        return None
+    ic50 = prediction.get("ic50_um_estimated")
+    if not isinstance(ic50, (int, float)) or not math.isfinite(ic50) or ic50 <= 0:
+        return None
+
+    similarity = prediction.get("tanimoto_similarity_max")
+    return {
+        "ic50_sensitive_um": float(ic50),
+        "source": "EVOCURE Calibrated Conformal QSAR",
+        "confidence": float(similarity) if isinstance(similarity, (int, float)) else 0.6,
+        # Deliberately not "validated": the conformal interval is about 3.1 log
+        # units, so this orders compounds, it does not measure them.
+        "is_validated": False,
+        "conformal_q_95": prediction.get("conformal_quantile_95"),
+    }
+
+
 class PharmacologyEngine:
     """
     Evaluates ADMET physicochemical properties, antitumor pharmacodynamics,

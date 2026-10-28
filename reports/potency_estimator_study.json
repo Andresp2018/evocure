@@ -1,0 +1,158 @@
+{
+  "seed": 20261027,
+  "n_repeats": 12,
+  "n_folds": 5,
+  "pdac_inventory": {
+    "n": 43,
+    "scaffolds": 32,
+    "pic50_min": 1.222,
+    "pic50_max": 8.301,
+    "pic50_sd": 2.441
+  },
+  "all_inventory": {
+    "n": 90,
+    "scaffolds": 71,
+    "pic50_min": 1.222,
+    "pic50_max": 8.398,
+    "pic50_sd": 2.063
+  },
+  "baselines_pdac": {
+    "predict_training_mean": {
+      "rmse_log_units": 2.752,
+      "mae_log_units": 2.494,
+      "r2": -0.272,
+      "spearman": -0.589,
+      "n_predictions": 516
+    },
+    "heuristic_as_shipped": {
+      "rmse_log_units": 2.339,
+      "mae_log_units": 2.061,
+      "r2": 0.082,
+      "spearman": 0.56,
+      "n_predictions": 516
+    },
+    "heuristic_refit_2_params": {
+      "rmse_log_units": 2.478,
+      "mae_log_units": 2.23,
+      "r2": -0.031,
+      "spearman": 0.139,
+      "n_predictions": 516
+    },
+    "heuristic_refit_4_params": {
+      "rmse_log_units": 2.195,
+      "mae_log_units": 1.827,
+      "r2": 0.191,
+      "spearman": 0.479,
+      "n_predictions": 516
+    },
+    "random_forest_fingerprint": {
+      "rmse_log_units": 1.366,
+      "mae_log_units": 1.036,
+      "r2": 0.687,
+      "spearman": 0.749,
+      "n_predictions": 516
+    },
+    "random_forest_descriptors": {
+      "rmse_log_units": 1.451,
+      "mae_log_units": 1.153,
+      "r2": 0.646,
+      "spearman": 0.74,
+      "n_predictions": 516
+    },
+    "ridge_descriptors": {
+      "rmse_log_units": 1.796,
+      "mae_log_units": 1.46,
+      "r2": 0.459,
+      "spearman": 0.659,
+      "n_predictions": 516
+    }
+  },
+  "models_beating_the_mean": [
+    "random_forest_fingerprint",
+    "random_forest_descriptors",
+    "ridge_descriptors",
+    "heuristic_refit_4_params",
+    "heuristic_as_shipped",
+    "heuristic_refit_2_params"
+  ],
+  "learning_curve": [
+    {
+      "fraction": 0.25,
+      "train_scaffolds": 8.0,
+      "train_rows": 10.7,
+      "rmse": 2.037,
+      "spearman": 0.608
+    },
+    {
+      "fraction": 0.4,
+      "train_scaffolds": 12.0,
+      "train_rows": 16.7,
+      "rmse": 1.81,
+      "spearman": 0.675
+    },
+    {
+      "fraction": 0.55,
+      "train_scaffolds": 17.0,
+      "train_rows": 22.5,
+      "rmse": 1.632,
+      "spearman": 0.719
+    },
+    {
+      "fraction": 0.7,
+      "train_scaffolds": 22.0,
+      "train_rows": 29.2,
+      "rmse": 1.352,
+      "spearman": 0.726
+    },
+    {
+      "fraction": 0.85,
+      "train_scaffolds": 27.0,
+      "train_rows": 35.8,
+      "rmse": 1.036,
+      "spearman": 0.726
+    }
+  ],
+  "rmse_gained_from_quadrupling_data": 1.001,
+  "learning_curve_still_climbing": true,
+  "calibrated_parameters": {
+    "two_parameter": {
+      "intercept": 7.761258662940142,
+      "slope": 13.11876586815946
+    },
+    "four_parameter": {
+      "intercept": 2.2995844238087852,
+      "coef_logp_opt": -6.238659438196125,
+      "coef_mw_opt": -10.267194771160504,
+      "coef_qed": 15.596671897241931
+    },
+    "as_shipped": {
+      "intercept": 3.0,
+      "slope": 3.2
+    }
+  },
+  "reachable_ranges": {
+    "as_shipped": {
+      "most_potent_ic50_um": 0.8454,
+      "least_potent_ic50_um": 17.12
+    },
+    "refit_2_params": {
+      "most_potent_ic50_um": 0.0054,
+      "least_potent_ic50_um": 1218.43
+    },
+    "refit_4_params": {
+      "most_potent_ic50_um": 0.0,
+      "least_potent_ic50_um": 27137381.49
+    }
+  },
+  "sub_micromolar_references": 17,
+  "reference_coverage": {
+    "as_shipped": "0/6",
+    "refit_2_params": "5/6",
+    "refit_4_params": "6/6"
+  },
+  "conclusions": [
+    "Best under scaffold CV: random_forest_fingerprint. It beats the trivial mean baseline, but check the margin before relying on it.",
+    "The learning curve is still improving at the current size, so a larger assay-homogeneous training set is the highest value work.",
+    "Even refitted, the heuristic's functional form cannot reach the most potent curated drugs, so recalibration alone will not make generated structures comparable to reference therapeutics."
+  ]
+}

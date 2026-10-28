@@ -591,7 +591,10 @@ def method_section(pdf: Report, data: dict) -> None:
     qsar = data.get("qsar_validation", {})
     pdf.key_values([
         ("Training compounds", str(data.get("training_structure_count", ""))),
-        ("Validation", "Bemis-Murcko scaffold split, no scaffold leakage"),
+        ("Independent scaffolds", str(qsar.get("independent_scaffolds", "not recorded"))),
+        ("Validation", ascii_only(qsar.get("validation_scheme",
+                                           "Bemis-Murcko scaffold split"))),
+        ("Pooled test predictions", str(qsar.get("test_compounds", ""))),
         ("Regression RMSE", f"{fmt(qsar.get('rmse'), 3)} log units"),
         ("Regression R2", fmt(qsar.get("r2"), 3)),
         ("Classifier ROC AUC", fmt(qsar.get("roc_auc"), 3)),
@@ -599,18 +602,32 @@ def method_section(pdf: Report, data: dict) -> None:
         ("Conformal 95% half width", f"{fmt(qsar.get('conformal_q_95'), 2)} log units"),
     ], label_w=52)
 
+    r2 = qsar.get("r2")
+    quantile = qsar.get("conformal_q_95")
+    strong = isinstance(r2, (int, float)) and r2 >= 0.5
+    fold = (10.0 ** float(quantile)) if isinstance(quantile, (int, float)) else None
+
     pdf.callout(
-        "The potency numbers in this report are weak, by the model's own measurement",
-        f"The pIC50 regressor explains little of the variance in the held out scaffolds "
-        f"(R2 = {fmt(qsar.get('r2'), 2)}), and its calibrated 95% conformal interval is about "
-        f"{fmt(qsar.get('conformal_q_95'), 1)} log units wide in each direction. An interval "
-        "that wide spans roughly eight orders of magnitude in IC50, which is to say it does "
-        "not constrain potency at all.\n\n"
-        f"The active versus inactive classifier is the stronger half of the model "
-        f"(ROC AUC = {fmt(qsar.get('roc_auc'), 2)}). Reading pIC50 as a rough ordering signal "
-        "is defensible. Reading any single predicted IC50 as a quantity is not. Every pIC50 "
-        "in this report is printed with its conformal interval for that reason.",
-        tone="warn",
+        "Ordering is usable, individual values are not",
+        (f"Under repeated scaffold-grouped cross validation the regressor explains a "
+         f"real share of the variance across held out scaffolds (R2 = {fmt(r2, 2)}, "
+         f"RMSE {fmt(qsar.get('rmse'), 2)} log units), and the classifier separates active "
+         f"from inactive well (ROC AUC = {fmt(qsar.get('roc_auc'), 2)}).\n\n"
+         if strong else
+         f"The regressor explains little of the variance across held out scaffolds "
+         f"(R2 = {fmt(r2, 2)}). The classifier is the stronger half "
+         f"(ROC AUC = {fmt(qsar.get('roc_auc'), 2)}).\n\n") +
+        (f"That does not make a predicted IC50 a quantity. The calibrated 95% conformal "
+         f"interval is about {fmt(quantile, 1)} log units in each direction, a factor of "
+         f"roughly {fold:,.0f} on IC50. Rank ordering within the generated set is "
+         f"defensible; a single predicted IC50 is not, and every pIC50 here is printed "
+         f"with its interval for that reason.\n\n"
+         if fold else "") +
+        "A note on method. These figures come from repeated grouped folds, not one split. "
+        "A single scaffold split on 43 compounds leaves about ten test compounds and "
+        "returns anything from R2 -0.09 to 0.82 depending only on the random seed, so a "
+        "value from one split describes the split rather than the model.",
+        tone="info" if strong else "warn",
     )
 
     pdf.h2("2.4 Tissue simulation")
@@ -693,7 +710,7 @@ def candidate_pages(pdf: Report, data: dict) -> None:
             [
                 ["Predicted pIC50", fmt(pic50.get("value"), 3),
                  f"{fmt(interval.get('low'), 2)} to {fmt(interval.get('high'), 2)}",
-                 "ordering signal only"],
+                 "ordering signal"],
                 ["Implied IC50 (uM)", fmt(qsar.get("ic50_um_estimated"), 4),
                  "spans orders of magnitude", "not a quantity"],
                 ["Active probability", fmt(probability.get("value"), 3),
@@ -753,21 +770,64 @@ def candidate_pages(pdf: Report, data: dict) -> None:
             ["L", "L"],
         )
 
-        nearest = (comparison.get("matches") or [{}])[0]
-        exact = comparison.get("exact_reference_name")
-        pdf.h2("Relation to known drugs")
-        pdf.key_values([
-            ("Nearest reference", f"{ascii_only(nearest.get('name', 'none'))} "
-                                  f"(Tanimoto {fmt(nearest.get('similarity'), 3)})"),
-            ("Exact structural match", ascii_only(exact) if exact else "none in the local library"),
-            ("Library scope", f"{comparison.get('reference_count', 0)} curated reference drugs"),
-        ], label_w=44)
-        pdf.small(
-            "The reference library is small and local. Absence of a match here does not "
-            "establish that a structure is novel, and similarity to an active drug does not "
-            "establish that it is active. A patent and literature search would be the next "
-            "step before treating any of these as new chemical matter."
+        novelty = entry.get("local_novelty") or {}
+        pdf.h2("Does something like this already exist?")
+        if novelty:
+            pdf.key_values([
+                ("Local verdict", ascii_only(novelty.get("classification", ""))),
+                ("Nearest local structure",
+                 f"{ascii_only((novelty.get('nearest') or [{}])[0].get('name', 'none'))} "
+                 f"(Tanimoto {fmt(novelty.get('max_similarity'), 3)})"),
+                ("Exact match",
+                 ascii_only(novelty.get("exact_match")) if novelty.get("exact_match")
+                 else "none in the local corpus"),
+                ("Same skeleton",
+                 ascii_only(novelty.get("same_skeleton_match"))
+                 if novelty.get("same_skeleton_match") else "none"),
+                ("Shared Murcko scaffold",
+                 ", ".join(ascii_only(n) for n in novelty.get("same_scaffold_matches", []))
+                 or "none"),
+                ("Corpus searched", f"{novelty.get('corpus_size', 0)} local structures"),
+            ], label_w=44)
+
+            nearest_rows = [[
+                ascii_only(m.get("name", "")),
+                ascii_only(str(m.get("source", ""))[:28]),
+                fmt(m.get("similarity"), 3),
+                "yes" if m.get("same_scaffold") else "no",
+            ] for m in (novelty.get("nearest") or [])[:5]]
+            if nearest_rows:
+                pdf.table(["Closest local structure", "Source", "Tanimoto", "Same scaffold"],
+                          [58, 62, 26, 28], nearest_rows, ["L", "L", "R", "C"])
+
+            pdf.callout(
+                "This is not a prior art search",
+                ascii_only(novelty.get("caveat", "")),
+                tone="warn",
+            )
+        else:
+            nearest = (comparison.get("matches") or [{}])[0]
+            pdf.key_values([
+                ("Nearest reference", f"{ascii_only(nearest.get('name', 'none'))} "
+                                      f"(Tanimoto {fmt(nearest.get('similarity'), 3)})"),
+                ("Library scope",
+                 f"{comparison.get('reference_count', 0)} curated reference drugs"),
+            ], label_w=44)
+
+        pdf.h2("Potential, and what it rests on")
+        signals, unknowns = potential_profile(entry, data)
+        pdf.table(
+            ["Signal", "Reading", "What it is based on"],
+            [46, 36, 92], signals, ["L", "L", "L"],
         )
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*INK)
+        pdf.multi_cell(0, 4.6, "Not assessed at all")
+        pdf.set_font("Helvetica", "", 8.7)
+        pdf.set_text_color(*MUTED)
+        pdf.multi_cell(0, 4.3, ascii_only("; ".join(unknowns) + "."))
+        pdf.set_text_color(*INK)
+        pdf.ln(2)
 
         if test.get("bonferroni_separates"):
             verdict = ("This candidate separated from the negative control and survived "
@@ -785,6 +845,71 @@ def candidate_pages(pdf: Report, data: dict) -> None:
                        "absence of alerts, not a demonstrated simulated effect.")
         pdf.callout("Verdict", verdict,
                     tone="info" if test.get("bonferroni_separates") else "warn")
+
+
+def potential_profile(entry: dict, data: dict) -> tuple[list[list[str]], list[str]]:
+    """Break 'potential' into the signals behind it rather than one score.
+
+    A single number would invite exactly the reading this report is trying to
+    avoid, so each signal is shown with the model that produced it.
+    """
+    ranking = entry.get("ranking") or {}
+    objectives = ranking.get("objectives", {})
+    qsar = entry.get("qsar", {})
+    descriptors = entry.get("descriptors", {})
+    novelty = entry.get("local_novelty") or {}
+    test = entry.get("versus_negative_control", {})
+    spread = entry["summary"]["tgi"]
+    provenance = entry.get("potency_provenance") or "unknown"
+
+    def band(value, good, fair, labels=("favourable", "moderate", "unfavourable")):
+        if not isinstance(value, (int, float)):
+            return "not available"
+        if value >= good:
+            return labels[0]
+        if value >= fair:
+            return labels[1]
+        return labels[2]
+
+    risk = ranking.get("risk_index")
+    rows = [
+        ["Predicted potency",
+         band(objectives.get("predicted_pdac_activity"), 0.6, 0.35),
+         f"pIC50 {fmt((qsar.get('pic50') or {}).get('value'), 2)}, "
+         f"{ascii_only(provenance.replace('_', ' '))}"],
+        ["Potency certainty", "low by construction",
+         f"conformal interval {fmt(data.get('qsar_validation', {}).get('conformal_q_95'), 1)} "
+         f"log units"],
+        ["Simulated tissue effect",
+         ("distinguishable" if test.get("bonferroni_separates")
+          else "marginal" if test.get("separates_from_negative_control")
+          else "not distinguishable"),
+         f"TGI {fmt(spread.get('mean'), 1)} % over {spread.get('n')} seeds, "
+         f"{p_value_text(test.get('p_value'))}"],
+        ["Toxicology alerts",
+         band(100.0 - risk if isinstance(risk, (int, float)) else None, 80, 60),
+         f"risk index {fmt(risk, 1)} of 100, ten category screen"],
+        ["Drug likeness",
+         band(descriptors.get("qed"), 0.6, 0.4),
+         f"QED {fmt(descriptors.get('qed'), 3)}, Lipinski {lipinski_text(descriptors)}"],
+        ["Model applicability",
+         "inside domain" if qsar.get("in_applicability_domain") else "outside domain",
+         f"Tanimoto {fmt(qsar.get('tanimoto_similarity_max'), 2)} to nearest training compound"],
+        ["Structural distinctness",
+         ascii_only(str(novelty.get("classification", "not assessed")).split(":")[0]),
+         f"max Tanimoto {fmt(novelty.get('max_similarity'), 2)} over "
+         f"{novelty.get('corpus_size', 0)} local structures"],
+    ]
+
+    unknowns = [
+        "synthetic accessibility and whether a route exists",
+        "chemical stability and reactivity",
+        "assay interference liability (no PAINS screen)",
+        "absorption, distribution, metabolism and excretion in a living system",
+        "whether the compound reaches a pancreatic tumour through desmoplastic stroma",
+        "any experimental measurement whatsoever",
+    ]
+    return rows, unknowns
 
 
 def lipinski_text(descriptors: dict) -> str:
@@ -818,10 +943,11 @@ def limitations_section(pdf: Report, data: dict) -> None:
          "Kinetics, diffusion constants, clone behaviour and drug response parameters are "
          "plausible but have not been fitted to experimental pancreatic tumour data. "
          "Simulated growth inhibition is a property of this software."),
-        ("The potency model cannot resolve potency",
-         f"A scaffold split R2 of {fmt(data.get('qsar_validation', {}).get('r2'), 2)} and a "
-         f"conformal interval of about {fmt(data.get('qsar_validation', {}).get('conformal_q_95'), 1)} "
-         "log units mean the regressor orders compounds loosely and quantifies none of them."),
+        ("The potency model orders compounds, it does not quantify them",
+         f"R2 of {fmt(data.get('qsar_validation', {}).get('r2'), 2)} under repeated grouped "
+         f"cross validation is real signal, but the conformal interval of about "
+         f"{fmt(data.get('qsar_validation', {}).get('conformal_q_95'), 1)} log units still "
+         "spans orders of magnitude in IC50. Use the ranking, not the numbers."),
         ("A small, narrow training set",
          f"{data.get('training_structure_count', 0)} curated compounds. Applicability domain "
          "is measured against that set, so high domain confidence means close to the training "
