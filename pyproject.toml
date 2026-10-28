@@ -40,6 +40,14 @@ local-ai = [
     "safetensors>=0.4.5",
 ]
 
+[tool.setuptools.packages.find]
+# The repository is a flat layout with several top level directories, most of
+# which are data, assets or scripts rather than importable packages. Without
+# this, setuptools auto-discovery refuses to build and `pip install .` fails.
+include = ["ai*", "app*", "simulation*"]
+exclude = ["tests*", "scripts*", "docs*", "reports*", "models*", "data*",
+           "configs*", "frontend*", "godot_frontend*", "build*", "experiments*"]
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
