@@ -31,7 +31,7 @@ import os
 import platform
 import time
 from datetime import datetime, timezone
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
 import numpy as np
 from rdkit import Chem
@@ -66,6 +66,13 @@ PROMPT = (
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _package_version(name: str) -> str:
+    try:
+        return version(name)
+    except PackageNotFoundError:
+        return "not installed"
 
 
 def describe_spread(values):
@@ -172,8 +179,10 @@ def main():
         "laya": engine.laya.get_status(),
         "python": platform.python_version(),
         "platform": platform.platform(),
+        # torch is an optional dependency, so record it as absent rather than
+        # assuming every environment that runs this has it installed.
         "packages": {
-            name: version(name)
+            name: _package_version(name)
             for name in ("rdkit", "numpy", "scipy", "scikit-learn", "torch")
         },
         "hashes": {
