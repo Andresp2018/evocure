@@ -139,44 +139,82 @@ def test_heritability_without_mutation() -> None:
 
 
 def test_heritability_with_mutation() -> None:
-    """
-    When mutation_rate == 1.0, daughter cells exhibit bounded stochastic trait shifts.
-    """
-    engine = DarwinianEcosystemEngine(
-        division_overhead=1.5,
-        min_replication_substrate=4.0,
-        mutation_rate=1.0,
-    )
-    parent = SpatialEntity(
-        entity_id="P-MUT",
-        compound_id="CMP-MUT",
-        kind=EntityKind.PROTOCELL,
-        x=200.0,
-        y=200.0,
-        energy=30.0,
-        stored_substrate=10.0,
-        replication_threshold=22.0,
-        decay_rate=0.02,
-        catalytic_efficiency=1.5,
-        stability_score=0.8,
-    )
+    """Heritable variation now requires a structural change, because traits are
+    derived from the molecule rather than drifting on their own.
 
-    result = engine.step(
-        entities=[parent],
-        substrate_source=0.0,
-        dt=0.0,
-        rng=np.random.default_rng(123),
-        current_step=1,
-    )
-    children = result["entities"]
-    assert len(children) == 2
-    # At least one daughter exhibits a mutated catalytic efficiency or stability
-    diverged = any(
-        c.catalytic_efficiency != parent.catalytic_efficiency
-        or c.stability_score != parent.stability_score
-        for c in children
-    )
-    assert diverged, "Expected mutation variation in offspring"
+    Three regimes, all of which must behave as described:
+
+      chemical phenotype + structural mutation   traits change with the structure
+      chemical phenotype, no structural mutation no variation, and a warning
+      legacy mode                                numeric drift, as before
+    """
+    import warnings
+
+    from simulation.chemistry.engine import ChemistryEngine
+    from simulation.evolution.molecular_ga import DirectedMolecularOptimizer
+
+    def make_parent() -> SpatialEntity:
+        return SpatialEntity(
+            entity_id="P-MUT", compound_id="CMP-MUT", kind=EntityKind.PROTOCELL,
+            x=200.0, y=200.0, energy=30.0, stored_substrate=10.0,
+            replication_threshold=22.0, decay_rate=0.02,
+            catalytic_efficiency=1.5, stability_score=0.8,
+        )
+
+    def divide(engine: DarwinianEcosystemEngine, parent: SpatialEntity):
+        result = engine.step(entities=[parent], substrate_source=0.0, dt=0.0,
+                             rng=np.random.default_rng(123), current_step=1)
+        children = result["entities"]
+        assert len(children) == 2
+        return children
+
+    # 1. Structure drives traits: a mutated molecule gives a different phenotype.
+    chem = ChemistryEngine()
+    optimizer = DirectedMolecularOptimizer()
+    seed = chem.build_compound("CC(=O)Oc1ccccc1C(=O)O")
+    registry = {"CMP-MUT": seed}
+
+    def mutate(parent_compound, rng):
+        smiles, _ = optimizer.mutate_smiles(parent_compound.canonical_smiles, rng=rng)
+        try:
+            return chem.build_compound(smiles, parent_ids=[parent_compound.compound_id])
+        except Exception:
+            return parent_compound
+
+    parent = make_parent()
+    children = divide(
+        DarwinianEcosystemEngine(division_overhead=1.5, min_replication_substrate=4.0,
+                                 mutation_rate=1.0, mutate_structure_fn=mutate,
+                                 compounds_registry=registry),
+        parent)
+    assert any(c.compound_id != parent.compound_id for c in children), (
+        "a mutation must change the molecule")
+    assert any(c.catalytic_efficiency != parent.catalytic_efficiency
+               or c.stability_score != parent.stability_score
+               for c in children), "a changed molecule must change the traits"
+
+    # 2. No way to alter the molecule means no heritable variation, and the engine
+    #    must say so rather than appearing to evolve while standing still.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        inert = DarwinianEcosystemEngine(division_overhead=1.5,
+                                         min_replication_substrate=4.0,
+                                         mutation_rate=1.0)
+    assert any("no heritable variation" in str(w.message) for w in caught)
+
+    parent = make_parent()
+    for child in divide(inert, parent):
+        assert child.catalytic_efficiency == parent.catalytic_efficiency
+        assert child.stability_score == parent.stability_score
+
+    # 3. Legacy numeric drift is still available for comparison.
+    parent = make_parent()
+    legacy = divide(
+        DarwinianEcosystemEngine(division_overhead=1.5, min_replication_substrate=4.0,
+                                 mutation_rate=1.0, chemical_phenotype=False),
+        parent)
+    assert any(c.catalytic_efficiency != parent.catalytic_efficiency
+               or c.stability_score != parent.stability_score for c in legacy)
 
 
 # =============================================================================

@@ -123,6 +123,16 @@ fallbacks active, so you do not need any downloaded weights to reproduce it.
 reproduction and inherited variation. A sandbox for artificial chemical ecosystems, kept
 strictly separate from the biomedical models.
 
+Survival traits are derived from each entity's molecular structure, so selection acts on
+chemistry: catalytic groups and polar surface set metabolic efficiency, hydrolysable bonds
+set the decay rate, ring systems set stability, and molecular size sets the cost of
+copying. With structural mutation disabled, a hydrolysable anhydride lineage is eliminated
+while a stable aromatic one grows, driven by nothing but the structures.
+
+Earlier releases evolved four free-standing numbers while the molecule was a label that
+nothing read. Open-endedness is measured with Bedau style activity statistics and is **not**
+claimed: runs so far classify as class 1, selecting and then settling.
+
 **Candidate discovery.** A fifteen stage pipeline: seed import, structural variant
 generation, RDKit validation, descriptor calculation, calibrated QSAR with conformal
 intervals, ADMET and ten category toxicology, applicability domain check, multi objective

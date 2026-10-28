@@ -27,6 +27,7 @@ Implements Section 6 (Artificial Chemical Life):
 from __future__ import annotations
 
 import math
+import warnings
 from typing import Any, Callable
 import numpy as np
 
@@ -36,6 +37,7 @@ from simulation.core.contracts import (
     EntityKind,
     SpatialEntity,
 )
+from simulation.evolution.chemical_phenotype import phenotype_from_compound
 from simulation.evolution.genealogy import GenealogyTracker
 
 
@@ -71,6 +73,8 @@ class DarwinianEcosystemEngine:
         ph_tolerance: float = 1.0,
         mutate_structure_fn: Callable[[CompoundRecord, np.random.Generator], CompoundRecord] | None = None,
         compounds_registry: dict[str, CompoundRecord] | None = None,
+        chemical_phenotype: bool = True,
+        crowding_reference: int = 1200,
     ) -> None:
         self.genealogy_tracker = genealogy_tracker
         self.mutation_rate = float(mutation_rate)
@@ -93,6 +97,30 @@ class DarwinianEcosystemEngine:
         self.ph_tolerance = float(ph_tolerance)
         self.mutate_structure_fn = mutate_structure_fn
         self.compounds_registry = compounds_registry if compounds_registry is not None else {}
+        # Survival traits derived from the molecule rather than drifting on their
+        # own. Without this the structure is a label and selection acts on noise.
+        self.chemical_phenotype = bool(chemical_phenotype)
+        # Population scale at which crowding starts to bite. This is NOT a hard
+        # ceiling: the equilibrium population depends on substrate supply and on
+        # the traits in play, and with a generous supply it settles well above
+        # this number. Set it to 0 to disable competition entirely, which
+        # restores the old behaviour of unbounded exponential growth.
+        self.crowding_reference = max(0, int(crowding_reference))
+
+        # With traits derived from structure, a structural mutation is the only
+        # thing that can change them. Without a way to produce one there is no
+        # heritable variation at all, so the ecosystem cannot evolve. That is the
+        # correct behaviour, and silently inert is the wrong way to deliver it.
+        if self.chemical_phenotype and mutate_structure_fn is None:
+            warnings.warn(
+                "DarwinianEcosystemEngine: chemical_phenotype is on but no "
+                "mutate_structure_fn was supplied. Survival traits are derived "
+                "from the molecule, so with no way to alter the molecule there is "
+                "no heritable variation and the population cannot evolve. Supply "
+                "mutate_structure_fn, or pass chemical_phenotype=False for the "
+                "legacy numeric drift behaviour.",
+                RuntimeWarning, stacklevel=2,
+            )
 
         # Ecological counters
         self.total_births: int = 0
@@ -216,6 +244,17 @@ class DarwinianEcosystemEngine:
         living_entities = [e for e in entities if e.alive]
         coop_boosts, energy_deltas = self._compute_spatial_interactions(living_entities, dt)
 
+        # Logistic crowding. At the carrying capacity maintenance costs double, so
+        # the weakest metabolisms stop paying their way and the population settles
+        # instead of growing without limit.
+        # Quadratic, because a linear term is too weak to bind: a lineage with a
+        # low decay rate simply outruns it and the population overshoots the
+        # ceiling several fold, which makes "carrying capacity" a misnomer.
+        crowding = 1.0
+        if self.crowding_reference > 0:
+            load = len(living_entities) / float(self.crowding_reference)
+            crowding = 1.0 + load * load
+
         # 2. Resource uptake, metabolism, maintenance, and interaction resolution
         step_deaths: int = 0
         step_recycled_substrate: float = 0.0
@@ -239,10 +278,13 @@ class DarwinianEcosystemEngine:
                 except Exception:
                     avail_substrate = 10.0
 
-            # B. Resource uptake
+            # B. Resource uptake, shared out as the population grows.
+            # Competition has to act here rather than on maintenance: uptake is
+            # two orders of magnitude larger than the decay cost, so throttling
+            # maintenance alone leaves growth effectively unbounded.
             coop_mult = 1.0 + min(2.0, coop_boosts.get(entity.entity_id, 0.0))
             max_uptake = self.base_uptake_rate * entity.catalytic_efficiency * coop_mult * dt
-            actual_uptake = min(avail_substrate, max_uptake)
+            actual_uptake = min(avail_substrate / crowding, max_uptake)
             entity.stored_substrate += actual_uptake
 
             # Deduct substrate from source if callback supports it
@@ -263,7 +305,9 @@ class DarwinianEcosystemEngine:
             # High stability score buffers against temperature and pH stress
             stress_buffer = max(0.1, 1.0 - 0.5 * entity.stability_score)
             stress_mult = 1.0 + base_stress * stress_buffer
-            maintenance_cost = entity.decay_rate * stress_mult * dt
+            # Crowding raises the cost of staying alive, so the population finds a
+            # ceiling and entities compete instead of all surviving together.
+            maintenance_cost = entity.decay_rate * stress_mult * crowding * dt
             entity.energy -= maintenance_cost
 
             entity.age += 1
@@ -340,11 +384,14 @@ class DarwinianEcosystemEngine:
 
                     # Stochastic Mutation
                     is_mutated = rng.random() < self.mutation_rate
-                    if is_mutated:
+                    if is_mutated and not self.chemical_phenotype:
+                        # Legacy path: traits drift on their own, detached from any
+                        # structure. Retained so the two regimes can be compared.
                         child_cat = max(0.05, child_cat + float(rng.normal(0, 0.05)))
                         child_stab = float(np.clip(child_stab + rng.normal(0, 0.05), 0.1, 1.0))
                         child_rep = max(5.0, child_rep + float(rng.normal(0, 0.5)))
                         child_decay = max(0.001, child_decay + float(rng.normal(0, 0.002)))
+                    if is_mutated:
 
                         # Ecological role mutation (rare)
                         if rng.random() < 0.15:
@@ -359,6 +406,17 @@ class DarwinianEcosystemEngine:
                                 self.compounds_registry[new_comp.compound_id] = new_comp
                                 child_cid = new_comp.compound_id
                                 child_fam = new_comp.family_id
+
+                                # The whole point of a chemical evolution engine: the
+                                # new structure determines the child's survival traits.
+                                # Without this the molecule is a label and selection
+                                # acts on drifting numbers that mean nothing.
+                                if self.chemical_phenotype:
+                                    phenotype = phenotype_from_compound(new_comp)
+                                    child_cat = phenotype.catalytic_efficiency
+                                    child_stab = phenotype.stability_score
+                                    child_rep = phenotype.replication_threshold
+                                    child_decay = phenotype.decay_rate
 
                                 if self.genealogy_tracker:
                                     self.genealogy_tracker.register_compound(
