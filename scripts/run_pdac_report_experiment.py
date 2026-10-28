@@ -40,6 +40,7 @@ from scipy import stats
 
 from simulation.core.engine import EVOCUREEngine
 from simulation.core.acceleration import status as compute_status
+from simulation.core.structure_archive import StructureArchive
 from simulation.discovery.pipeline import CandidateDiscoveryPipeline
 from simulation.discovery.workbench import (
     assess_local_novelty,
@@ -162,6 +163,17 @@ def main():
         progress_callback=lambda event: print("SEARCH", event, flush=True),
     )
     engine.register_discovery_results(result)
+
+    # Archive every structure the search evaluated, not just the five reported.
+    # Re-scoring the archive later is 69 times cheaper than repeating the search.
+    archive = StructureArchive()
+    archive_stats = archive.record_search(
+        result,
+        experiment_id=os.environ.get("EVOCURE_REPORT_ID", "EVOCURE-PDAC"),
+        model_versions={"qsar": "pdac_qsar_v1",
+                        "pipeline": result.get("pipeline_version")},
+    )
+    print("ARCHIVE", json.dumps(archive_stats), flush=True)
     (OUT / "pipeline_results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 
     report = {
@@ -196,6 +208,8 @@ def main():
                 ROOT / "simulation/discovery/workbench.py",
             ]
         },
+        "explored_space": archive.summary(),
+        "archive_stats": archive_stats,
         "selection_basis": result["selection_basis"],
         "tissue_in_fitness": result["tissue_in_fitness"],
         "objective_keys": result["objective_keys"],

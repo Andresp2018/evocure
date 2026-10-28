@@ -377,6 +377,47 @@ def transfer_section(pdf: Report, data: dict) -> None:
         )
 
 
+def explored_space_section(pdf: Report, data: dict) -> None:
+    """The five reported candidates are a rounding error on what was evaluated."""
+    explored = data.get("explored_space") or {}
+    if not explored.get("total"):
+        return
+
+    pdf.h2("2.6 What the search explored, and what it discarded")
+    total = explored["total"]
+    reported = explored.get("selected_for_reporting", 0)
+    pdf.body(
+        f"This report shows {reported} structures. The search evaluated {total:,}, "
+        f"across {explored.get('unique_scaffolds', 0):,} distinct Bemis-Murcko "
+        f"scaffolds. Everything else was scored and rejected, and the reasons are "
+        f"recorded rather than discarded."
+    )
+
+    rows = [[ascii_only(reason), f"{count:,}", f"{100.0 * count / total:.1f} %"]
+            for reason, count in (explored.get("rejection_reasons") or {}).items()]
+    if rows:
+        pdf.table(["Why a structure did not reach this report", "Count", "Share"],
+                  [104, 36, 34], rows, ["L", "R", "R"])
+
+    pdf.callout(
+        "The generator explores further than the selection will follow",
+        f"The search reached {explored.get('unique_scaffolds', 0):,} distinct scaffolds, "
+        f"so it is not merely decorating the seed drugs. Selection then pulls back "
+        f"toward the training set, because the applicability domain objective rewards "
+        f"similarity to the 43 compounds the potency model was fitted on, and the "
+        f"model cannot speak confidently about anything further away.\n\n"
+        f"The practical consequence is that the novelty ceiling is set by the training "
+        f"set, not by the generator. Improving the generator would not move it.\n\n"
+        f"All {total:,} structures are kept in a local archive as a search trace, "
+        f"queryable with scripts/explore_archive.py. Re-scoring that archive against a "
+        f"better model takes about 99 seconds, against 6834 to repeat the search. It is "
+        f"a log of what an algorithm tried, not a library of candidates: scores come "
+        f"from a potency model whose interval is far wider than the differences "
+        f"between entries.",
+        tone="info",
+    )
+
+
 def summary_section(pdf: Report, data: dict) -> None:
     pdf.add_page()
     pdf.h1("1. Summary")
@@ -737,6 +778,7 @@ def method_section(pdf: Report, data: dict) -> None:
     )
 
     transfer_section(pdf, data)
+    explored_space_section(pdf, data)
 
 
 def candidate_pages(pdf: Report, data: dict) -> None:

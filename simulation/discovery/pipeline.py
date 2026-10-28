@@ -65,6 +65,10 @@ BASE_OBJECTIVE_KEYS: tuple[str, ...] = (
 # Added to the objective set only when the caller closes the selection loop.
 TISSUE_OBJECTIVE_KEY: str = "simulated_growth_inhibition"
 
+# Added when medicinal chemistry filters are enabled. Scores rather than rejects,
+# because the underlying rule sets flag approved drugs including paclitaxel.
+MEDCHEM_OBJECTIVE_KEY: str = "medicinal_chemistry_plausibility"
+
 DEFAULT_SEEDS: list[str] = [
     "Nc1ccn([C@@H]2O[C@H](CO)[C@@H](O)C2(F)F)c(=O)n1",  # Gemcitabine
     "O=c1[nH]cc(F)c(=O)[nH]1",                          # 5-Fluorouracil
@@ -120,6 +124,7 @@ class CandidateDiscoveryPipeline:
         objective_weights: dict[str, float] | None = None,
         candidate_count: int = 5,
         tissue_in_fitness: bool = False,
+        medchem_filters: bool = False,
     ) -> dict[str, Any]:
         """
         Execute the full 15-stage iterative discovery pipeline across the specified
@@ -136,6 +141,8 @@ class CandidateDiscoveryPipeline:
         objective_keys = list(BASE_OBJECTIVE_KEYS)
         if tissue_in_fitness:
             objective_keys.append(TISSUE_OBJECTIVE_KEY)
+        if medchem_filters:
+            objective_keys.append(MEDCHEM_OBJECTIVE_KEY)
         if self.disease_id != "PDAC":
             objective_weights = {"predicted_pdac_activity": 0.0, "selectivity_index": 0.0,
                                  "qed_druglikeness": 1.0, "low_toxicological_risk": 1.0,
@@ -495,6 +502,16 @@ class CandidateDiscoveryPipeline:
                         "applicability_domain_confidence": round(domain_obj, 4),
                     },
                 }
+                if medchem_filters:
+                    from simulation.chemistry.medchem_filters import (
+                        assess as medchem_assess,
+                        plausibility_objective,
+                    )
+                    assessment = medchem_assess(sm)
+                    candidate_entry["medchem"] = assessment.to_dict()
+                    candidate_entry["objectives"][MEDCHEM_OBJECTIVE_KEY] = (
+                        plausibility_objective(assessment)
+                    )
                 evaluated_candidates.append(candidate_entry)
                 all_evaluated[sm] = candidate_entry
 
@@ -810,6 +827,7 @@ class CandidateDiscoveryPipeline:
                 "in_applicability_domain": candidate["in_applicability_domain"],
                 "tissue_simulated": candidate.get("tissue_simulated", False),
                 "potency_provenance": candidate.get("potency_provenance"),
+                "medchem": candidate.get("medchem"),
                 "objectives": candidate["objectives"], "composite_utility": candidate.get("composite_utility"),
                 "source": "Directed optimization", "epistemic_category": "Exploratory model result",
                 "is_seed": record.canonical_smiles in seed_smiles,
@@ -825,6 +843,7 @@ class CandidateDiscoveryPipeline:
             "objective_weights": objective_weights or {},
             "objective_keys": objective_keys,
             "tissue_in_fitness": tissue_in_fitness,
+            "medchem_filters": medchem_filters,
             "selection_basis": (
                 "Six objectives including simulated tumour growth inhibition; the "
                 "microenvironment model exerts selective pressure on the population."

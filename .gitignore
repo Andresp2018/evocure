@@ -53,6 +53,7 @@ reports/*
 !reports/potency_asymmetry.json
 !reports/potency_estimator_study.json
 !reports/tissue_transfer_function.json
+!reports/generator_benchmark.json
 
 # Godot editor state
 godot_frontend/.godot/

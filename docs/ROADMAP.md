@@ -20,6 +20,9 @@ Three measurements set the agenda below, all reproducible from this repository:
 Reproduce with `scripts/investigate_potency_estimator.py`,
 `scripts/investigate_potency_asymmetry.py` and `scripts/measure_tissue_transfer.py`.
 
+[DATA_SOURCES.md](DATA_SOURCES.md) says where the missing data lives and how to
+import it. Items 1 and 2 below are both data problems before they are code problems.
+
 ---
 
 ## 1. Scientific usefulness, highest priority

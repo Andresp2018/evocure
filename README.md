@@ -290,6 +290,10 @@ Reproduce it with `python scripts/investigate_potency_estimator.py`.
 **Done looks like.** A fitted model with its validation protocol, a dataset with
 provenance per record, and a statement of what the conformal interval became.
 
+[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) lists the sources and the exact import
+commands. `scripts/import_bioactivity.py` enforces assay homogeneity so a bulk
+download cannot quietly pool incomparable measurements into one training target.
+
 ### Challenge 2. Improve molecular generation and evolutionary optimisation
 
 **Where it stands.** The generator applies RDKit point mutations over nine functional

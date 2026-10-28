@@ -173,3 +173,53 @@ def test_closed_loop_simulates_more_than_the_top_candidate():
     closed_loop = _run(tissue_in_fitness=True)
 
     assert len(closed_loop["controlled_comparisons"]) > len(open_loop["controlled_comparisons"])
+
+
+# ---------------------------------------------------------------------------
+# 3. Medicinal chemistry plausibility as a search objective
+# ---------------------------------------------------------------------------
+
+def test_medchem_objective_is_off_by_default():
+    result = _run(tissue_in_fitness=False)
+    assert result["medchem_filters"] is False
+    assert "medicinal_chemistry_plausibility" not in result["objective_keys"]
+    for candidate in result["evaluated_candidates"]:
+        assert candidate.get("medchem") is None
+
+
+def test_medchem_objective_enters_selection_when_enabled():
+    from simulation.discovery.pipeline import MEDCHEM_OBJECTIVE_KEY
+
+    pipeline = CandidateDiscoveryPipeline(disease_id="PDAC")
+    result = pipeline.run(
+        seed_queries=["Gemcitabine", "5-Fluorouracil"], generations=1,
+        population_size=6, top_k_cellular=1, duration_hours=6.0, seed=4242,
+        candidate_count=3, medchem_filters=True,
+    )
+
+    assert result["medchem_filters"] is True
+    assert MEDCHEM_OBJECTIVE_KEY in result["objective_keys"]
+
+    evaluated = result["evaluated_candidates"]
+    assert evaluated
+    for candidate in evaluated:
+        assert candidate.get("medchem") is not None
+        value = candidate["objectives"].get(MEDCHEM_OBJECTIVE_KEY)
+        assert value is not None and 0.0 <= value <= 1.0
+
+
+def test_medchem_assessment_travels_with_the_candidate():
+    pipeline = CandidateDiscoveryPipeline(disease_id="PDAC")
+    result = pipeline.run(
+        seed_queries=["Gemcitabine"], generations=1, population_size=4,
+        top_k_cellular=1, duration_hours=4.0, seed=7, candidate_count=2,
+        medchem_filters=True,
+    )
+
+    for candidate in result["top_candidates"]:
+        medchem = candidate.get("medchem")
+        assert medchem is not None
+        assert "sa_score" in medchem and "alert_count" in medchem
+        assert "verdict" in medchem
+        # The caveat must survive into anything a reader sees.
+        assert "not that the compound can be made or works" in medchem["caveat"]

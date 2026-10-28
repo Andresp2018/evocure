@@ -1,0 +1,53 @@
+{
+  "retrieval_baseline_note": "random_sampling retrieves known compounds from the local library rather than generating new ones, so a high score there reflects the library containing approved drugs. It is included as the question every generative method should have to answer: would picking from a catalogue have done as well?",
+  "budget_evaluations": 300,
+  "repeats": 3,
+  "top_n": 10,
+  "seed_compounds": [
+    "Nc1ccn([C@@H]2O[C@H](CO)[C@@H](O)C2(F)F)c(=O)n1",
+    "O=c1[nH]cc(F)c(=O)[nH]1",
+    "COc1cc2ncnc(Nc3cccc(C#C)c3)c2cc1OCCOC"
+  ],
+  "objective": "0.6 x calibrated QSAR potency utility, sigmoidal at pIC50 6.0, plus 0.4 x medicinal chemistry plausibility. Potency alone is never optimised.",
+  "results": {
+    "random_sampling": {
+      "best_score": 0.7411,
+      "best_score_sd": 0.0,
+      "top_mean_score": 0.6242,
+      "internal_diversity": 0.8872,
+      "unique_scaffolds_in_top": 10.0,
+      "valid_fraction": 0.1433,
+      "seconds_per_run": 1.8
+    },
+    "random_mutation": {
+      "best_score": 0.549,
+      "best_score_sd": 0.0304,
+      "top_mean_score": 0.5225,
+      "internal_diversity": 0.57,
+      "unique_scaffolds_in_top": 2.7,
+      "valid_fraction": 0.9709,
+      "seconds_per_run": 16.9
+    },
+    "hill_climbing": {
+      "best_score": 0.7117,
+      "best_score_sd": 0.0361,
+      "top_mean_score": 0.7093,
+      "internal_diversity": 0.287,
+      "unique_scaffolds_in_top": 2.3,
+      "valid_fraction": 0.5991,
+      "seconds_per_run": 13.1
+    },
+    "nsga2_directed": {
+      "best_score": 0.722,
+      "best_score_sd": 0.0062,
+      "top_mean_score": 0.7106,
+      "internal_diversity": 0.5256,
+      "unique_scaffolds_in_top": 4.3,
+      "valid_fraction": 0.9649,
+      "seconds_per_run": 13.7
+    }
+  },
+  "verdict": "The directed search beats its strongest baseline (hill_climbing) by +0.0013 on top 10 mean score.",
+  "diversity_note": "random_sampling explores more chemical space than the directed search (0.8872 against 0.5256), which matches the structural convergence seen in long production runs.",
+  "scope": "Offline baselines only. This is not GuacaMol or MOSES, which require their own packages and reference sets and remain the right external comparison. It answers whether the directed search beats random and greedy search on this objective, nothing more."
+}
