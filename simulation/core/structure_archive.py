@@ -29,10 +29,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from simulation.core.paths import writable_root
 
 DEFAULT_DB_PATH: Path = writable_root() / "experiments" / "evocure.sqlite3"
@@ -108,8 +109,26 @@ class StructureArchive:
         conn.execute("PRAGMA synchronous=NORMAL;")
         return conn
 
+
+    @contextmanager
+    def _session(self) -> Iterator[sqlite3.Connection]:
+        """A connection that commits on success, rolls back on error, and closes.
+
+        `with sqlite3.connect(...) as conn` manages the TRANSACTION, not the
+        connection: it commits or rolls back and then leaves the handle open, so
+        every call leaked one until the garbage collector got to it. The suite
+        reported several thousand "unclosed database" ResourceWarnings, and a
+        report run inserts thousands of rows through these helpers.
+        """
+        conn = self._connect()
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
     def _init_db(self) -> None:
-        with self._connect() as conn:
+        with self._session() as conn:
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS structures (
@@ -173,7 +192,7 @@ class StructureArchive:
         versions = json.dumps(model_versions or {}, sort_keys=True)
 
         inserted, updated, skipped = 0, 0, 0
-        with self._connect() as conn:
+        with self._session() as conn:
             for item in evaluated:
                 smiles = item.get("canonical_smiles")
                 mol = Chem.MolFromSmiles(smiles) if smiles else None
@@ -245,7 +264,7 @@ class StructureArchive:
     # ------------------------------------------------------------------ reading
 
     def count(self) -> int:
-        with self._connect() as conn:
+        with self._session() as conn:
             return int(conn.execute("SELECT COUNT(*) FROM structures").fetchone()[0])
 
     def query(
@@ -267,7 +286,7 @@ class StructureArchive:
             clauses.append("selected = 0")
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
 
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(
                 f"SELECT * FROM structures{where} "
                 f"ORDER BY composite_utility DESC LIMIT ?", (*params, int(limit) * 4)
@@ -287,7 +306,7 @@ class StructureArchive:
 
     def summary(self) -> dict[str, Any]:
         """What the search explored, which the report shows only five rows of."""
-        with self._connect() as conn:
+        with self._session() as conn:
             total = conn.execute("SELECT COUNT(*) FROM structures").fetchone()[0]
             if not total:
                 return {"total": 0, "caveat": EXPORT_CAVEAT}
@@ -351,7 +370,7 @@ class StructureArchive:
         The point of the archive: this is 69 times cheaper than repeating the
         search that produced these structures.
         """
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(
                 "SELECT inchikey, canonical_smiles, composite_utility, model_versions_json "
                 "FROM structures ORDER BY composite_utility DESC"
@@ -394,7 +413,7 @@ class StructureArchive:
                 "scored_at_utc": now,
             })
 
-        with self._connect() as conn:
+        with self._session() as conn:
             conn.executemany(
                 "UPDATE structures SET composite_utility = :composite_utility, "
                 "pic50 = :pic50, ic50_um = :ic50_um, objectives_json = :objectives_json, "

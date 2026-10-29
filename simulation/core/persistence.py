@@ -16,12 +16,13 @@ import io
 import json
 import os
 import sqlite3
+from contextlib import contextmanager
 import uuid
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Iterator, Sequence
 
 import numpy as np
 from fpdf import FPDF
@@ -196,9 +197,26 @@ class ExperimentStore:
         conn.execute("PRAGMA synchronous=NORMAL;")
         return conn
 
+    @contextmanager
+    def _session(self) -> Iterator[sqlite3.Connection]:
+        """A connection that commits on success, rolls back on error, and closes.
+
+        `with sqlite3.connect(...) as conn` manages the TRANSACTION, not the
+        connection: it commits or rolls back and then leaves the handle open, so
+        every call leaked one until the garbage collector got to it. The suite
+        reported several thousand "unclosed database" ResourceWarnings, and a
+        report run inserts thousands of rows through these helpers.
+        """
+        conn = self._get_connection()
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
     def _init_db(self) -> None:
         """Initialize SQLite schema for experiments, checkpoints, and simulation events."""
-        with self._get_connection() as conn:
+        with self._session() as conn:
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS experiments (
@@ -333,7 +351,7 @@ class ExperimentStore:
         perf_str = safe_json_dumps(performance_metrics or {})
         warnings_str = safe_json_dumps(warnings_limitations or [])
 
-        with self._get_connection() as conn:
+        with self._session() as conn:
             conn.execute(
                 """
                 INSERT INTO experiments (
@@ -389,7 +407,7 @@ class ExperimentStore:
         Raises KeyError if experiment does not exist.
         """
         resolved_id = self._resolve_experiment_id(experiment_id)
-        with self._get_connection() as conn:
+        with self._session() as conn:
             cur = conn.execute(
                 "SELECT * FROM experiments WHERE experiment_id = ?", (resolved_id,)
             )
@@ -418,7 +436,7 @@ class ExperimentStore:
 
     def list_experiments(self, limit: int = 50) -> list[dict[str, Any]]:
         """List summary metadata for recent experiments ordered by creation time descending."""
-        with self._get_connection() as conn:
+        with self._session() as conn:
             cur = conn.execute(
                 """
                 SELECT experiment_id, created_at, title, simulator_version,
@@ -474,7 +492,7 @@ class ExperimentStore:
         now_iso = datetime.now(timezone.utc).isoformat()
         state_str = safe_json_dumps(state_dict)
 
-        with self._get_connection() as conn:
+        with self._session() as conn:
             conn.execute(
                 """
                 INSERT INTO checkpoints (
@@ -495,7 +513,7 @@ class ExperimentStore:
 
     def load_checkpoint(self, checkpoint_id: str) -> dict[str, Any]:
         """Load a checkpoint snapshot by ID with deserialized state dict."""
-        with self._get_connection() as conn:
+        with self._session() as conn:
             cur = conn.execute(
                 "SELECT * FROM checkpoints WHERE checkpoint_id = ?", (checkpoint_id,)
             )
@@ -516,7 +534,7 @@ class ExperimentStore:
         """List checkpoint metadata headers without heavy state payloads."""
         if experiment_id is not None:
             experiment_id = self._resolve_experiment_id(experiment_id)
-        with self._get_connection() as conn:
+        with self._session() as conn:
             if experiment_id:
                 cur = conn.execute(
                     """
@@ -557,7 +575,7 @@ class ExperimentStore:
         now_iso = datetime.now(timezone.utc).isoformat()
         details_str = safe_json_dumps(details or {})
 
-        with self._get_connection() as conn:
+        with self._session() as conn:
             conn.execute(
                 """
                 INSERT INTO events (
@@ -582,7 +600,7 @@ class ExperimentStore:
     def list_events(self, experiment_id: str, limit: int = 100) -> list[dict[str, Any]]:
         """Query logged discrete events for an experiment."""
         resolved_id = self._resolve_experiment_id(experiment_id)
-        with self._get_connection() as conn:
+        with self._session() as conn:
             cur = conn.execute(
                 """
                 SELECT event_id, experiment_id, created_at, step, generation,
