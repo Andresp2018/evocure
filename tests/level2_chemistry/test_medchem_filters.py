@@ -27,7 +27,7 @@ PACLITAXEL = (
     "CC1=C2C(C(=O)C3(C(CC4C(C3C(C(C2(C)C)(CC1OC(=O)C(C(c1ccccc1)NC(=O)c1ccccc1)O)O)"
     "OC(=O)c1ccccc1)(CO4)OC(C)=O)O)C)OC(C)=O"
 )
-# A gemcitabine-derived variant from the published 100 generation run.
+# A gemcitabine-derived variant from the published 20 generation run.
 GENERATED = "Nc1ccn([C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@H]2C(=O)O)c(=O)n1"
 DISCONNECTED = "CCO.CCN"
 

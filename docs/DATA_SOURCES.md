@@ -48,7 +48,7 @@ ChEMBL remains useful as a source for a single large panel imported on its own,
 and `scripts/fetch_chembl_bioactivity.py` reports the protocol count so you can
 see what you are about to pool.
 
-That last point is not a stylistic preference. The published 100 generation run
+That last point is not a stylistic preference. The published 20 generation run
 produced five candidates that are all gemcitabine analogues at Tanimoto 0.62 to
 0.72, because the training set is narrow and the applicability domain check
 rewards staying close to it. Scaffold diversity in the training data is what

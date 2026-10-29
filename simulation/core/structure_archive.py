@@ -1,6 +1,6 @@
 """A durable record of every structure a search evaluated, not a candidate library.
 
-A 100 generation run evaluates around two thousand structures and reports five.
+A 20 generation run evaluates hundreds of structures and reports five.
 The other 2084 currently exist only in memory for the length of a session and
 inside a JSON blob afterwards, so they cannot be queried, compared or reused.
 

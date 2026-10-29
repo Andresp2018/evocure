@@ -14,7 +14,7 @@ Three measurements set the agenda below, all reproducible from this repository:
 - A learning curve over held-out scaffolds falls from RMSE 2.04 to 1.04 between 8 and 27
   training scaffolds and is still descending. The estimator is data limited.
 - Holding everything fixed except the assigned IC50 shows the tissue model behaves close
-  to a threshold on the potency it is handed. In the published 100 generation run the
+  to a threshold on the potency it is handed. In the published 20 generation run the
   five candidates span a factor of 1.7 in IC50 inside that 1330 fold uncertainty.
 
 Reproduce with `scripts/investigate_potency_estimator.py`,
