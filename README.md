@@ -338,12 +338,14 @@ sufficient.
 
 **Where it stands.** The generator applies RDKit point mutations over nine functional
 groups, bioisosteric substitutions and BRICS fragment crossover, selected by NSGA-II over
-six objectives with the tumour simulation in the loop. A published run evaluates around
-110 unique structures across four generations.
+six objectives with the tumour simulation in the loop, inside a bounded drug-like
+envelope. The published run evaluates 467 unique valid structures over 115 Bemis-Murcko
+scaffolds, across 20 generations at population 24, in 23 minutes on four CPU cores.
 
 **Why that is small.** Established molecular optimisation studies operate at 10^4 to 10^6
-evaluations. At 10^2 the search barely leaves the seed scaffolds, which is visible in the
-results: candidates cluster at Tanimoto 0.6 to the seed drug. The platform has also never
+evaluations. At a few hundred the search barely leaves the seed scaffolds, which is
+visible in the results: all five reported candidates are gemcitabine analogues at Tanimoto
+0.62 to 0.78 to that seed. The platform has also never
 been benchmarked against the standard baselines, so its generator's quality relative to
 GB-GA, REINVENT or a SELFIES method is simply unknown.
 
@@ -387,9 +389,17 @@ through `objective_weights`. That is the mechanism behind the fused dimers this 
 used to describe. Reproduce either direction from
 `tests/level3_evolution/test_chemical_envelope.py`.
 
-What that buys is narrow. A molecule inside the envelope with no structural alert and a
-routine SA score is still only "not obviously impossible", and the rule sets flag
-approved drugs, so passing them means little on its own.
+What that buys is narrow, and the published report shows how narrow. Regenerating it with
+the envelope in place changed nothing a reader would notice: candidates at 356 to 403 Da
+against 356 to 385 before, no structural alerts either way, SA 4.10 to 4.32 against 4.10
+to 4.36, and the same five gemcitabine analogues. This run never needed the bound, because
+it already weights QED at 2.0 and runs the medicinal chemistry filters. The envelope earns
+its place against the operators themselves and against a run that downweights QED, not
+against this one, and it is not offered as an improvement to these candidates.
+
+A molecule inside the envelope with no structural alert and a routine SA score is still
+only "not obviously impossible", and the rule sets flag approved drugs, so passing them
+means little on its own.
 
 **Why it matters.** A ranked list whose members cannot be made, or would decompose, or
 would trigger every assay they touch, is not a shortlist. Chemical judgement is the

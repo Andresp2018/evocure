@@ -50,7 +50,7 @@ see what you are about to pool.
 
 That last point is not a stylistic preference. The published 20 generation run
 produced five candidates that are all gemcitabine analogues at Tanimoto 0.62 to
-0.72, because the training set is narrow and the applicability domain check
+0.78, because the training set is narrow and the applicability domain check
 rewards staying close to it. Scaffold diversity in the training data is what
 would let the search leave that neighbourhood with any confidence.
 
