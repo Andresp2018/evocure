@@ -1,0 +1,241 @@
+{
+  "observation_file": "/home/user/evocure/data/reference/tissue_calibration_observations.json",
+  "settings": {
+    "hours": 12.0,
+    "concentration_um": 5.0,
+    "seeds": [
+      20261027
+    ],
+    "tolerance_factor": 2.0
+  },
+  "observations_total": 4,
+  "observations_unverified": 4,
+  "observations_model_cannot_express": [
+    "panc1-spheroid-derived-vs-parental"
+  ],
+  "results": [
+    {
+      "observation_id": "panc1-caf-coculture-gemcitabine",
+      "status": "compared",
+      "measured_fold": 5.71,
+      "model_fold": 0.414,
+      "ic50_required_with_caf_um": 0.11917,
+      "ic50_required_without_caf_um": 0.28773,
+      "disagreement_factor": 13.79,
+      "within_tolerance": false,
+      "tolerance_factor": 2.0
+    },
+    {
+      "observation_id": "panc1-spheroid-doxorubicin-penetration",
+      "status": "no_tissue_at_that_distance",
+      "beta_ecm": 3.2,
+      "distance_um": 240.0,
+      "furthest_distance_from_a_source_um": 0.0,
+      "geometry_note": "No point in the slice is 240 um from the nearest drug source; the furthest is 0 um. The model is a perfused tumour slice and the observation is an avascular spheroid, so this constraint needs either a larger avascular region in the model or a spheroid geometry to be testable.",
+      "hours": 12,
+      "relative_concentration_at_distance": null,
+      "measurement_says": "full penetration to the core",
+      "model_consistent_with_full_penetration": null,
+      "floor_used": 0.1
+    }
+  ],
+  "barrier_effect": {
+    "check": "does the transport barrier produce a lasting gradient",
+    "needs_no_published_observation": true,
+    "rows": [
+      {
+        "beta_ecm": 0.0,
+        "hours": 1.0,
+        "drug_min": 0.08374,
+        "drug_max": 0.79292,
+        "drug_mean": 0.43946,
+        "coefficient_of_variation": 0.4624,
+        "min_over_max": 0.1056,
+        "ecm_mean": 0.1297
+      },
+      {
+        "beta_ecm": 0.0,
+        "hours": 6.0,
+        "drug_min": 0.82287,
+        "drug_max": 1.13519,
+        "drug_mean": 0.99719,
+        "coefficient_of_variation": 0.0957,
+        "min_over_max": 0.7249,
+        "ecm_mean": 0.1208
+      },
+      {
+        "beta_ecm": 0.0,
+        "hours": 12.0,
+        "drug_min": 1.0321,
+        "drug_max": 1.18068,
+        "drug_mean": 1.11269,
+        "coefficient_of_variation": 0.04,
+        "min_over_max": 0.8742,
+        "ecm_mean": 0.1048
+      },
+      {
+        "beta_ecm": 0.0,
+        "hours": 24.0,
+        "drug_min": 1.07047,
+        "drug_max": 1.18866,
+        "drug_mean": 1.13363,
+        "coefficient_of_variation": 0.0309,
+        "min_over_max": 0.9006,
+        "ecm_mean": 0.0762
+      },
+      {
+        "beta_ecm": 3.2,
+        "hours": 1.0,
+        "drug_min": 0.03454,
+        "drug_max": 0.84088,
+        "drug_mean": 0.46802,
+        "coefficient_of_variation": 0.4859,
+        "min_over_max": 0.0411,
+        "ecm_mean": 0.1297
+      },
+      {
+        "beta_ecm": 3.2,
+        "hours": 6.0,
+        "drug_min": 0.74547,
+        "drug_max": 1.15193,
+        "drug_mean": 1.00406,
+        "coefficient_of_variation": 0.1137,
+        "min_over_max": 0.6471,
+        "ecm_mean": 0.1209
+      },
+      {
+        "beta_ecm": 3.2,
+        "hours": 12.0,
+        "drug_min": 0.989,
+        "drug_max": 1.18414,
+        "drug_mean": 1.10765,
+        "coefficient_of_variation": 0.0495,
+        "min_over_max": 0.8352,
+        "ecm_mean": 0.1055
+      },
+      {
+        "beta_ecm": 3.2,
+        "hours": 24.0,
+        "drug_min": 1.04206,
+        "drug_max": 1.18961,
+        "drug_mean": 1.12826,
+        "coefficient_of_variation": 0.0371,
+        "min_over_max": 0.876,
+        "ecm_mean": 0.0782
+      },
+      {
+        "beta_ecm": 12.8,
+        "hours": 1.0,
+        "drug_min": 0.00921,
+        "drug_max": 0.9472,
+        "drug_mean": 0.5376,
+        "coefficient_of_variation": 0.5041,
+        "min_over_max": 0.0097,
+        "ecm_mean": 0.1297
+      },
+      {
+        "beta_ecm": 12.8,
+        "hours": 6.0,
+        "drug_min": 0.61376,
+        "drug_max": 1.17678,
+        "drug_mean": 1.01716,
+        "coefficient_of_variation": 0.1424,
+        "min_over_max": 0.5216,
+        "ecm_mean": 0.1204
+      },
+      {
+        "beta_ecm": 12.8,
+        "hours": 12.0,
+        "drug_min": 0.89032,
+        "drug_max": 1.19035,
+        "drug_mean": 1.09504,
+        "coefficient_of_variation": 0.0716,
+        "min_over_max": 0.7479,
+        "ecm_mean": 0.1044
+      },
+      {
+        "beta_ecm": 12.8,
+        "hours": 24.0,
+        "drug_min": 0.9716,
+        "drug_max": 1.19184,
+        "drug_mean": 1.11499,
+        "coefficient_of_variation": 0.0528,
+        "min_over_max": 0.8152,
+        "ecm_mean": 0.0769
+      },
+      {
+        "beta_ecm": 50.0,
+        "hours": 1.0,
+        "drug_min": 0.00257,
+        "drug_max": 1.11813,
+        "drug_mean": 0.67371,
+        "coefficient_of_variation": 0.5041,
+        "min_over_max": 0.0023,
+        "ecm_mean": 0.1296
+      },
+      {
+        "beta_ecm": 50.0,
+        "hours": 6.0,
+        "drug_min": 0.42468,
+        "drug_max": 1.19928,
+        "drug_mean": 1.00943,
+        "coefficient_of_variation": 0.1908,
+        "min_over_max": 0.3541,
+        "ecm_mean": 0.1202
+      },
+      {
+        "beta_ecm": 50.0,
+        "hours": 12.0,
+        "drug_min": 0.64689,
+        "drug_max": 1.19992,
+        "drug_mean": 1.0522,
+        "coefficient_of_variation": 0.1324,
+        "min_over_max": 0.5391,
+        "ecm_mean": 0.1046
+      },
+      {
+        "beta_ecm": 50.0,
+        "hours": 24.0,
+        "drug_min": 0.76217,
+        "drug_max": 1.19783,
+        "drug_mean": 1.07507,
+        "coefficient_of_variation": 0.1029,
+        "min_over_max": 0.6363,
+        "ecm_mean": 0.0768
+      }
+    ],
+    "gradient_survives_the_exposure": false,
+    "default_barrier_separates_from_no_barrier": false,
+    "finding": "The drug field equilibrates to near uniform within the exposure durations the platform runs, and the default barrier strength is close to indistinguishable from no barrier at all. The mechanism is present in the code and quantitatively inert here. The ECM field averages a small fraction of its maximum, so the attenuation term reduces diffusivity modestly rather than blocking transport.",
+    "why_it_matters": "Desmoplastic protection is the model's headline mechanism and the reason it claims to add something a ligand-based score cannot. If it does not bite, simulated growth inhibition is a restatement of the IC50 handed to it, which is what the failing positive control shows."
+  },
+  "beta_ecm_sweep": [],
+  "compared": 1,
+  "agreeing": 0,
+  "is_a_calibration": false,
+  "verdict": "NOT A CALIBRATION. 4 of 4 observations are unverified, transcribed from search engine summaries rather than read in the cited papers. The comparison above exercises the harness and shows what the model does; it does not license any claim about agreement with the literature. Promote records to verified_primary in data/reference/tissue_calibration_observations.json first.",
+  "contested_mechanism": {
+    "what_the_model_assumes": [
+      "The PDAC module's headline mechanism is that desmoplastic ECM physically",
+      "attenuates drug diffusion, D_eff = D_0 / (1 + beta * ECM), producing a",
+      "transport barrier that limits exposure in the tumour core."
+    ],
+    "evidence_for": {
+      "claim": "Gemcitabine and doxorubicin do not penetrate far into KPC mouse tumours; poor response attributed to poor vascularisation and stroma-driven interstitial pressure.",
+      "source_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7162455/",
+      "verification": "unverified_snippet"
+    },
+    "evidence_against": {
+      "claim": "In two orthotopic murine models gemcitabine was distributed nearly homogeneously, reaching both hypoxic and normoxic regions, and the authors concluded tissue penetration did not appear to limit its efficacy.",
+      "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4696432/",
+      "verification": "unverified_snippet"
+    },
+    "consequence": [
+      "The literature is genuinely contested on whether transport is what limits",
+      "gemcitabine in PDAC. The model rests on the first position. A calibration",
+      "that cannot return the answer 'the barrier is the wrong mechanism' is not a",
+      "calibration, so the harness reports the penetration constraint separately",
+      "and does not treat the barrier as given."
+    ]
+  }
+}
