@@ -33,6 +33,8 @@ from typing import Any, Dict, List, Optional, Union
 import psutil
 
 from simulation.core.contracts import EpistemicCategory, InterfaceMode
+from simulation.core.paths import models_dir as evocure_models_dir
+from simulation.core.paths import project_path
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +79,7 @@ class LocalGemmaAssistant:
         self._server_process: Optional[subprocess.Popen] = None
 
         if models_dir is None:
-            self.models_dir = Path(__file__).resolve().parents[2] / "models" / "gemma"
+            self.models_dir = evocure_models_dir() / "gemma"
         else:
             self.models_dir = Path(models_dir)
 
@@ -205,7 +207,7 @@ class LocalGemmaAssistant:
 
     def _save_to_dotenv(self) -> None:
         """Persist current AI provider settings to .env file."""
-        env_path = Path(__file__).resolve().parents[2] / ".env"
+        env_path = project_path(".env")
         lines: List[str] = []
         if env_path.exists():
             with open(env_path, "r", encoding="utf-8") as f:

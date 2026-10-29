@@ -23,6 +23,7 @@ from rdkit.Chem import Descriptors, rdMolDescriptors
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
 from simulation.core.contracts import CompoundRecord, EpistemicCategory
+from simulation.core.paths import reference_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -79,8 +80,7 @@ class ScientificDataManager:
 
     def __init__(self, reference_dir: Optional[Union[str, Path]] = None) -> None:
         if reference_dir is None:
-            # Default to e:/MA/EVOCURE/data/reference
-            self.reference_dir = Path(__file__).resolve().parents[2] / "data" / "reference"
+            self.reference_dir = reference_data_dir()
         else:
             self.reference_dir = Path(reference_dir)
         

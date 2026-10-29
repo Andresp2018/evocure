@@ -77,8 +77,9 @@ from simulation.physics.spatial import (
 from simulation.systemic.biomarkers import BiologicalIndicatorsEngine
 from simulation.systemic.pbpk import SystemicPBPKEngine
 from simulation.toxicity.models import ToxicologyEngine
+from simulation.core.paths import configs_dir
 
-CONFIGS_DIR: Path = Path(__file__).resolve().parents[2] / "configs"
+CONFIGS_DIR: Path = configs_dir()
 DEFAULT_UNIVERSE_CONFIG: Path = CONFIGS_DIR / "default_universe.json"
 MISSIONS_CONFIG: Path = CONFIGS_DIR / "missions_and_glossary.json"
 

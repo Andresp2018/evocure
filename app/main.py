@@ -20,11 +20,12 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import api_router, ws_router
 from app.api.evolution import router as evolution_router
 from app.services.session_manager import get_session_manager
+from simulation.core.paths import project_root
 
 logger = logging.getLogger("evocure.main")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
-BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
+BASE_DIR = project_root()
 STATIC_DIR = BASE_DIR / "frontend" / "static"
 
 

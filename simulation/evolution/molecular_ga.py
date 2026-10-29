@@ -10,13 +10,119 @@ Implements Section 6.1 (Mode B Grounded Chemistry):
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Callable
 import numpy as np
 
 from rdkit import Chem, DataStructs
-from rdkit.Chem import BRICS, rdFingerprintGenerator
+from rdkit.Chem import Descriptors, rdFingerprintGenerator, rdMolDescriptors
 
 from simulation.core.contracts import EpistemicCategory
+
+
+@dataclass(frozen=True)
+class ChemicalEnvelope:
+    """The region of chemical space the search is allowed to propose.
+
+    The operators had no size constraint of any kind, and nothing downstream
+    supplied one: the only bound on molecular size anywhere in the search was
+    QED, an indirect soft preference that a caller can switch off through the
+    public objective_weights argument. Measured on the operators alone, four
+    successive crossovers take erlotinib from 349 to 1131 Da, and ten
+    generations under size-favouring selection reach a mean of 76 kDa. A
+    generator that can wander to 76 kDa is not proposing drugs, and this is the
+    mechanism behind the fused dimers the project's own candidate review flags.
+
+    The bounds are the published ones, loosened where oncology practice has
+    moved past them, and they are deliberately generous rather than tight: this
+    is a boundary on what the search may emit, not a drug-likeness score. QED
+    and the medicinal chemistry filters remain the graded signals.
+
+      max_mol_weight        Lipinski's rule of five sets 500 Da. Approved
+                            oncology small molecules routinely exceed it, so
+                            600 Da admits that chemistry while still excluding
+                            dimerisation products.
+      max_heavy_atoms       45 heavy atoms is roughly 600 Da for typical
+                            organics, and bounds the graph independently of
+                            halogen mass.
+      max_rotatable_bonds   Veber sets 10 for oral bioavailability; 12 leaves
+                            headroom for the flexible linkers in kinase
+                            inhibitors.
+      max_rings             6 ring systems is already a complex polycycle.
+      min_heavy_atoms       Below this a fragment is not a candidate. The
+                            search otherwise drifts to tiny molecules that
+                            score well on size-penalised objectives.
+      allow_disconnected    Multi-component SMILES are salts or mixtures, not
+                            one molecule, and the tissue model doses a single
+                            species.
+    """
+
+    max_mol_weight: float = 600.0
+    max_heavy_atoms: int = 45
+    max_rotatable_bonds: int = 12
+    max_rings: int = 6
+    min_heavy_atoms: int = 5
+    allow_disconnected: bool = False
+
+    def violations(self, mol: Any) -> tuple[str, ...]:
+        """Which bounds this molecule breaks. Empty means it is admitted."""
+        if mol is None:
+            return ("unparseable",)
+        broken: list[str] = []
+        heavy = mol.GetNumHeavyAtoms()
+        if heavy > self.max_heavy_atoms:
+            broken.append("heavy_atoms")
+        if heavy < self.min_heavy_atoms:
+            broken.append("too_small")
+        if Descriptors.MolWt(mol) > self.max_mol_weight:
+            broken.append("mol_weight")
+        if rdMolDescriptors.CalcNumRotatableBonds(mol) > self.max_rotatable_bonds:
+            broken.append("rotatable_bonds")
+        if rdMolDescriptors.CalcNumRings(mol) > self.max_rings:
+            broken.append("rings")
+        if not self.allow_disconnected and len(Chem.GetMolFrags(mol)) > 1:
+            broken.append("disconnected")
+        return tuple(broken)
+
+    def admits(self, mol: Any) -> bool:
+        return not self.violations(mol)
+
+    def admits_smiles(self, smiles: str) -> bool:
+        return self.admits(Chem.MolFromSmiles(smiles) if smiles else None)
+
+
+# Applied by every operator unless a caller passes its own.
+DEFAULT_ENVELOPE = ChemicalEnvelope()
+
+
+def _accepts_product(product: Any, parents: list[Any],
+                     envelope: ChemicalEnvelope) -> bool:
+    """Whether an operator's product may be returned.
+
+    Inside the envelope is always acceptable. A product that is outside it is
+    accepted only when its parents were already outside on the same bounds and
+    it is no larger than the largest of them, so that a seed imported above the
+    bounds can still be mutated towards compliance instead of freezing the
+    search. Without that allowance, an oversized seed would make every operator
+    return the parent unchanged and the population could never move.
+    """
+    if product is None:
+        return False
+    broken = envelope.violations(product)
+    if not broken:
+        return True
+
+    parent_broken: set[str] = set()
+    largest_parent = 0
+    for parent in parents:
+        if parent is None:
+            continue
+        parent_broken.update(envelope.violations(parent))
+        largest_parent = max(largest_parent, parent.GetNumHeavyAtoms())
+
+    if not set(broken).issubset(parent_broken):
+        return False
+    return product.GetNumHeavyAtoms() <= max(largest_parent, envelope.max_heavy_atoms)
 
 
 class DirectedMolecularOptimizer:
@@ -40,8 +146,10 @@ class DirectedMolecularOptimizer:
         "-C(=O)O": "*C(=O)O",
     }
 
-    def __init__(self, reference_dataset_smiles: list[str] | None = None) -> None:
+    def __init__(self, reference_dataset_smiles: list[str] | None = None,
+                 envelope: ChemicalEnvelope | None = None) -> None:
         self.morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+        self.envelope = envelope or DEFAULT_ENVELOPE
         self.reference_dataset_smiles = reference_dataset_smiles or []
         self._reference_fps: list[Any] = []
         if self.reference_dataset_smiles:
@@ -51,17 +159,89 @@ class DirectedMolecularOptimizer:
                     self._reference_fps.append(self.morgan_gen.GetFingerprint(m))
 
     # -------------------------------------------------------------------------
+    # Envelope-constrained public operators
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def mutate_smiles(smiles: str, rng: np.random.Generator,
+                      envelope: ChemicalEnvelope | None = None,
+                      attempts: int = 6) -> tuple[str, str]:
+        """A chemically valid mutation that stays inside the chemical envelope.
+
+        The underlying operators are unchanged; their products are now checked
+        against the envelope and retried on rejection. When no attempt lands
+        inside it the parent is returned unchanged, which is the honest outcome:
+        the search found no admissible move from here, and inventing an
+        oversized one would put a molecule nobody can make into the population.
+
+        envelope defaults to DEFAULT_ENVELOPE. Pass a ChemicalEnvelope to widen
+        or tighten it, or ChemicalEnvelope(max_mol_weight=float("inf"), ...) to
+        recover the previous unbounded behaviour.
+        """
+        bounds = envelope or DEFAULT_ENVELOPE
+        parent = Chem.MolFromSmiles(smiles) if smiles else None
+        if parent is None:
+            return smiles, "invalid_input"
+
+        rejected = False
+        for _ in range(max(1, attempts)):
+            candidate, label = DirectedMolecularOptimizer._mutate_once(smiles, rng)
+            if candidate == smiles:
+                continue
+            product = Chem.MolFromSmiles(candidate)
+            if _accepts_product(product, [parent], bounds):
+                return candidate, label
+            rejected = True
+
+        # Two different outcomes, and a caller auditing a run needs to tell them
+        # apart: the envelope turned every product down, or the operators found
+        # no move to make from this structure at all.
+        return smiles, ("unmodified_envelope_bound" if rejected
+                        else "unmodified_identity")
+
+    @staticmethod
+    def recombine_smiles(smiles_a: str, smiles_b: str, rng: np.random.Generator,
+                         envelope: ChemicalEnvelope | None = None,
+                         attempts: int = 6) -> tuple[str, str]:
+        """A crossover whose product stays inside the chemical envelope.
+
+        Crossover is where molecular size ran away: the fragment operator
+        recombines the first fragment pair it finds valid, which is biased
+        towards the largest fragment of each parent, and the fallback linking
+        operator welds two whole molecules together. Both are now bounded, and
+        a rejected crossover degrades to a bounded mutation of the first parent
+        rather than to an unbounded weld.
+        """
+        bounds = envelope or DEFAULT_ENVELOPE
+        parent_a = Chem.MolFromSmiles(smiles_a) if smiles_a else None
+        parent_b = Chem.MolFromSmiles(smiles_b) if smiles_b else None
+        if parent_a is None or parent_b is None:
+            return smiles_a, "invalid_input"
+        parents = [parent_a, parent_b]
+
+        for _ in range(max(1, attempts)):
+            candidate, label = DirectedMolecularOptimizer._recombine_once(
+                smiles_a, smiles_b, rng)
+            if candidate in (smiles_a, smiles_b):
+                continue
+            product = Chem.MolFromSmiles(candidate)
+            if _accepts_product(product, parents, bounds):
+                return candidate, label
+
+        mutated, label = DirectedMolecularOptimizer.mutate_smiles(
+            smiles_a, rng, envelope=bounds, attempts=attempts)
+        return mutated, f"crossover_envelope_bound_{label}"
+
+    # -------------------------------------------------------------------------
     # RDKit Chemical Mutation Operators
     # -------------------------------------------------------------------------
 
     @staticmethod
-    def mutate_smiles(smiles: str, rng: np.random.Generator) -> tuple[str, str]:
-        """
-        Perform chemically valid functional group attachment/swap, bioisosteric
-        atom substitution, or bond modification, strictly verified by Chem.SanitizeMol.
-        
-        Returns:
-            tuple[canonical_smiles, transformation_label]
+    def _mutate_once(smiles: str, rng: np.random.Generator) -> tuple[str, str]:
+        """One unconstrained mutation attempt, verified only by Chem.SanitizeMol.
+
+        Chemical validity but no size or property bound. Callers go through
+        mutate_smiles, which applies the chemical envelope.
         """
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
@@ -215,14 +395,11 @@ class DirectedMolecularOptimizer:
     # -------------------------------------------------------------------------
 
     @staticmethod
-    def recombine_smiles(smiles_a: str, smiles_b: str, rng: np.random.Generator) -> tuple[str, str]:
-        """
-        Recombine two molecules using BRICS / single-bond fragment crossover
-        sanitized by RDKit, cleanly falling back to valid mutation if no crossover
-        site exists.
-        
-        Returns:
-            tuple[canonical_smiles, transformation_label]
+    def _recombine_once(smiles_a: str, smiles_b: str,
+                        rng: np.random.Generator) -> tuple[str, str]:
+        """One unconstrained crossover attempt, verified only by Chem.SanitizeMol.
+
+        Callers go through recombine_smiles, which applies the chemical envelope.
         """
         mol_a = Chem.MolFromSmiles(smiles_a)
         mol_b = Chem.MolFromSmiles(smiles_b)
@@ -255,30 +432,42 @@ class DirectedMolecularOptimizer:
                         f_b = Chem.FragmentOnBonds(mol_b, [bb], dummyLabels=[(1, 1)])
                         frags_b = Chem.GetMolFrags(f_b, asMols=True)
 
-                        for fa in frags_a:
-                            for fb in frags_b:
-                                dummies_a = [
-                                    at.GetIdx() for at in fa.GetAtoms() if at.GetAtomicNum() == 0
+                        # Try fragment pairs in order of how close the child's
+                        # size is to the parents' mean. Taking the first valid
+                        # pair instead favoured the largest fragment of each
+                        # parent, so every crossover grew the molecule: four in
+                        # a row took erlotinib from 349 to 1131 Da. A crossover
+                        # should recombine chemistry, not accumulate it.
+                        target = 0.5 * (mol_a.GetNumHeavyAtoms() + mol_b.GetNumHeavyAtoms())
+                        pairs = [
+                            (fa, fb) for fa in frags_a for fb in frags_b
+                        ]
+                        pairs.sort(key=lambda pair: abs(
+                            (pair[0].GetNumHeavyAtoms() - 1)
+                            + (pair[1].GetNumHeavyAtoms() - 1) - target))
+                        for fa, fb in pairs:
+                            dummies_a = [
+                                at.GetIdx() for at in fa.GetAtoms() if at.GetAtomicNum() == 0
+                            ]
+                            dummies_b = [
+                                at.GetIdx() for at in fb.GetAtoms() if at.GetAtomicNum() == 0
+                            ]
+                            if len(dummies_a) == 1 and len(dummies_b) == 1:
+                                combo = Chem.CombineMols(fa, fb)
+                                rw = Chem.RWMol(combo)
+                                dummies = [
+                                    at.GetIdx() for at in rw.GetAtoms() if at.GetAtomicNum() == 0
                                 ]
-                                dummies_b = [
-                                    at.GetIdx() for at in fb.GetAtoms() if at.GetAtomicNum() == 0
-                                ]
-                                if len(dummies_a) == 1 and len(dummies_b) == 1:
-                                    combo = Chem.CombineMols(fa, fb)
-                                    rw = Chem.RWMol(combo)
-                                    dummies = [
-                                        at.GetIdx() for at in rw.GetAtoms() if at.GetAtomicNum() == 0
-                                    ]
-                                    n1 = rw.GetAtomWithIdx(dummies[0]).GetNeighbors()[0].GetIdx()
-                                    n2 = rw.GetAtomWithIdx(dummies[1]).GetNeighbors()[0].GetIdx()
-                                    rw.AddBond(n1, n2, Chem.BondType.SINGLE)
-                                    for d in sorted(dummies, reverse=True):
-                                        rw.RemoveAtom(d)
-                                    prod = rw.GetMol()
-                                    Chem.SanitizeMol(prod)
-                                    smi = Chem.MolToSmiles(prod, canonical=True)
-                                    if smi and smi != smiles_a and smi != smiles_b:
-                                        return smi, f"fragment_crossover_{ba}_{bb}"
+                                n1 = rw.GetAtomWithIdx(dummies[0]).GetNeighbors()[0].GetIdx()
+                                n2 = rw.GetAtomWithIdx(dummies[1]).GetNeighbors()[0].GetIdx()
+                                rw.AddBond(n1, n2, Chem.BondType.SINGLE)
+                                for d in sorted(dummies, reverse=True):
+                                    rw.RemoveAtom(d)
+                                prod = rw.GetMol()
+                                Chem.SanitizeMol(prod)
+                                smi = Chem.MolToSmiles(prod, canonical=True)
+                                if smi and smi != smiles_a and smi != smiles_b:
+                                    return smi, f"fragment_crossover_{ba}_{bb}"
                     except Exception:
                         continue
 
@@ -310,7 +499,7 @@ class DirectedMolecularOptimizer:
                 pass
 
         # Strategy 3: Clean Fallback to Mutation
-        mutated, label = DirectedMolecularOptimizer.mutate_smiles(smiles_a, rng)
+        mutated, label = DirectedMolecularOptimizer._mutate_once(smiles_a, rng)
         return mutated, f"crossover_fallback_{label}"
 
     # -------------------------------------------------------------------------
@@ -397,6 +586,88 @@ class DirectedMolecularOptimizer:
                     distances[sorted_front[i]] += diff / obj_range
 
         return distances
+
+    def diverse_truncation(
+        self,
+        objectives_matrix: np.ndarray,
+        front: list[int],
+        needed: int,
+        smiles_by_index: dict[int, str],
+        chemical_weight: float = 0.5,
+    ) -> list[int]:
+        """Truncate a Pareto front on objective crowding and chemical distance.
+
+        NSGA-II breaks ties inside an over-full front by crowding distance, which
+        is measured in objective space. Two structures that score alike are
+        therefore interchangeable to it however different they are chemically,
+        and the search converges structurally: the published run's candidates sit
+        at Tanimoto 0.6 to the seed drug. For molecular optimisation the point of
+        keeping a diverse population is to keep diverse chemistry, so the
+        tie-break has to see the molecules.
+
+        Selection is greedy. The most crowded-out individual goes in first, then
+        each next pick maximises
+
+            chemical_weight * (distance to the nearest already selected member)
+          + (1 - chemical_weight) * (normalised objective crowding)
+
+        Tanimoto distance on Morgan fingerprints, radius 2. chemical_weight 0
+        reproduces plain NSGA-II crowding, 1 ignores the objectives entirely.
+
+        This preserves chemical diversity. It does not establish that the extra
+        structures are any good, and a more diverse population of implausible
+        molecules is still implausible.
+        """
+        if needed <= 0 or not front:
+            return []
+        if needed >= len(front):
+            return list(front)
+
+        weight = min(1.0, max(0.0, float(chemical_weight)))
+        crowding = self.crowding_distance(objectives_matrix, front)
+
+        finite = [v for v in crowding.values() if np.isfinite(v)]
+        ceiling = max(finite) if finite else 1.0
+        if ceiling <= 0:
+            ceiling = 1.0
+
+        def normalised_crowding(idx: int) -> float:
+            value = crowding.get(idx, 0.0)
+            # Boundary individuals carry inf; they are the extremes of the front
+            # and keeping them is the behaviour NSGA-II intends.
+            return 1.0 if np.isinf(value) else min(1.0, float(value) / ceiling)
+
+        fingerprints: dict[int, Any] = {}
+        for idx in front:
+            mol = Chem.MolFromSmiles(smiles_by_index.get(idx, "") or "")
+            if mol is not None:
+                fingerprints[idx] = self.morgan_gen.GetFingerprint(mol)
+
+        remaining = list(front)
+        first = max(remaining, key=normalised_crowding)
+        selected = [first]
+        remaining.remove(first)
+
+        while len(selected) < needed and remaining:
+            def score(idx: int) -> float:
+                own = fingerprints.get(idx)
+                if own is None:
+                    # An unreadable structure gets no diversity credit rather
+                    # than a free maximum.
+                    distance = 0.0
+                else:
+                    similarities = [
+                        DataStructs.TanimotoSimilarity(own, fingerprints[chosen])
+                        for chosen in selected if chosen in fingerprints
+                    ]
+                    distance = 1.0 - max(similarities) if similarities else 1.0
+                return weight * distance + (1.0 - weight) * normalised_crowding(idx)
+
+            pick = max(remaining, key=score)
+            selected.append(pick)
+            remaining.remove(pick)
+
+        return selected
 
     def calculate_diversity(self, smiles_list: list[str]) -> float:
         """

@@ -28,6 +28,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import brier_score_loss, mean_squared_error, r2_score, roc_auc_score
 
 from simulation.core.contracts import EpistemicCategory, ScientificValue
+from simulation.core.paths import scientific_model_path
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,7 @@ class CalibratedQSARPredictor:
     and Multi-Disease Context Support (Section 16).
     """
 
-    DEFAULT_MODEL_PATH = (
-        Path(__file__).resolve().parents[2] / "models" / "scientific" / "pdac_qsar_v1.joblib"
-    )
+    DEFAULT_MODEL_PATH = scientific_model_path()
 
     def __init__(
         self,

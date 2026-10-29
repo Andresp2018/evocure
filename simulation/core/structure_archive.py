@@ -33,8 +33,9 @@ from typing import Any, Iterable
 
 import json
 import sqlite3
+from simulation.core.paths import writable_root
 
-DEFAULT_DB_PATH: Path = Path(__file__).resolve().parents[2] / "experiments" / "evocure.sqlite3"
+DEFAULT_DB_PATH: Path = writable_root() / "experiments" / "evocure.sqlite3"
 
 RECORD_TYPE: str = "search_trace"
 
