@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "Published measurements the PDAC tissue model can be tested against.",
+  "why_ratios_and_not_absolute_values": [
+    "Published PANC-1 monolayer gemcitabine IC50 values span 58 nM to 31.41 uM,",
+    "three orders of magnitude, because studies differ in assay duration, readout,",
+    "passage number and serum. Absolute potencies therefore cannot be pooled across",
+    "papers and cannot serve as calibration targets. This is the same assay",
+    "heterogeneity that made the ChEMBL dataset expansion fail; see",
+    "reports/dataset_expansion_comparison.json.",
+    "A ratio measured within one study has those confounders cancel, so paired",
+    "within-study ratios are the only quantities recorded here."
+  ],
+  "verification_policy": [
+    "Every record carries a verification field.",
+    "  unverified_snippet  the value was transcribed from a search engine result",
+    "                      summarising the paper, NOT read in the paper itself. It",
+    "                      may be misattributed, rounded, or taken out of context.",
+    "  verified_primary    someone opened the cited source, confirmed the number,",
+    "                      the cell line, the assay and the comparison, and recorded",
+    "                      their initials and the date in verified_by.",
+    "scripts/calibrate_tissue_model.py refuses to report a calibration from",
+    "unverified records. It will compute and display the comparison so the harness",
+    "can be exercised, and it will state that the result is not a calibration.",
+    "Promoting a record to verified_primary is a contribution that needs no code."
+  ],
+  "observations": [
+    {
+      "id": "panc02-spheroid-vs-monolayer-gemcitabine",
+      "kind": "fold_resistance_3d_vs_2d",
+      "description": "Murine Panc02 gemcitabine IC50, spheroid against monolayer, same study.",
+      "cell_line": "Panc02",
+      "species": "mouse",
+      "drug": "gemcitabine",
+      "monolayer_ic50_um": 9.99,
+      "spheroid_ic50_um": 18.38,
+      "fold": 1.84,
+      "paired_within_study": true,
+      "model_can_express": "partially",
+      "model_mapping_note": [
+        "The tissue model is a vascularised 2D tumour slice, not a spheroid, so",
+        "there is no exact analogue of a monolayer arm. The closest comparison is",
+        "a dense low-perfusion configuration against a sparse well-perfused one.",
+        "The mapping is approximate and the harness says so."
+      ],
+      "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11910381/",
+      "source_note": "Reversible chemoresistance of pancreatic cancer grown as spheroids",
+      "verification": "unverified_snippet",
+      "verified_by": null
+    },
+    {
+      "id": "panc1-spheroid-derived-vs-parental",
+      "kind": "fold_resistance_3d_vs_2d",
+      "description": "PANC-1 spheroid-derived cells against parental, three drugs, same study.",
+      "cell_line": "PANC-1",
+      "species": "human",
+      "drug": "gemcitabine",
+      "fold": 1.5,
+      "additional_folds": {"doxorubicin": 1.9, "oxaliplatin": 2.8},
+      "paired_within_study": true,
+      "model_can_express": "no",
+      "model_mapping_note": [
+        "These are cells selected by spheroid culture and then re-assayed, which",
+        "is a heritable phenotype change rather than a geometry or transport",
+        "effect. The tissue model has no mechanism for culture-induced selection,",
+        "so it cannot represent this observation at all. Recorded because a",
+        "harness that silently omits what the model cannot express overstates its",
+        "coverage."
+      ],
+      "source_url": "https://karger.com/cpb/article/47/5/2109/73646/Transcriptome-Profiling-of-Panc-1-Spheroid-Cells",
+      "source_note": "Transcriptome profiling of Panc-1 spheroid cells",
+      "verification": "unverified_snippet",
+      "verified_by": null
+    },
+    {
+      "id": "panc1-caf-coculture-gemcitabine",
+      "kind": "fold_resistance_caf_coculture",
+      "description": "PANC-1 gemcitabine IC50 with cancer-associated fibroblasts at 9:1 against PANC-1 alone, same study.",
+      "cell_line": "PANC-1",
+      "species": "human",
+      "drug": "gemcitabine",
+      "alone_ic50_um": 0.058,
+      "with_caf_ic50_um": 0.331,
+      "caf_ratio": "9:1 tumour to fibroblast",
+      "fold": 5.71,
+      "paired_within_study": true,
+      "model_can_express": "yes",
+      "model_mapping_note": [
+        "The model carries CAFs as an explicit cell type that deposits ECM and",
+        "attenuates drug diffusivity, so a with-and-without run is a direct",
+        "analogue. This is the primary calibration target available."
+      ],
+      "source_url": "https://link.springer.com/article/10.1007/s13105-021-00857-2",
+      "source_note": "Inclusion of cancer-associated fibroblasts in drug screening assays",
+      "verification": "unverified_snippet",
+      "verified_by": null
+    },
+    {
+      "id": "panc1-spheroid-doxorubicin-penetration",
+      "kind": "penetration_constraint",
+      "description": "Doxorubicin reaches the core of 480 um PANC-1 spheroids within 12 h at all concentrations tested.",
+      "cell_line": "PANC-1",
+      "species": "human",
+      "drug": "doxorubicin",
+      "spheroid_diameter_um": 480,
+      "spheroid_diameter_tolerance_um": 10,
+      "time_to_full_penetration_h": 12,
+      "paired_within_study": true,
+      "model_can_express": "yes",
+      "model_mapping_note": [
+        "A falsifiable upper bound on beta_ECM, the ECM attenuation coefficient in",
+        "D_eff = D_0 / (1 + beta * ECM). If the model predicts a steep unresolved",
+        "gradient over 240 um of dense tissue in 12 hours, the barrier is stronger",
+        "than this measurement allows. Doxorubicin is not gemcitabine, but both",
+        "are small molecules and the constraint is on transport, not potency."
+      ],
+      "source_url": "https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0073345",
+      "source_note": "Concave microwells applied to pancreatic tumour spheroids",
+      "verification": "unverified_snippet",
+      "verified_by": null
+    }
+  ],
+  "contested_mechanism": {
+    "what_the_model_assumes": [
+      "The PDAC module's headline mechanism is that desmoplastic ECM physically",
+      "attenuates drug diffusion, D_eff = D_0 / (1 + beta * ECM), producing a",
+      "transport barrier that limits exposure in the tumour core."
+    ],
+    "evidence_for": {
+      "claim": "Gemcitabine and doxorubicin do not penetrate far into KPC mouse tumours; poor response attributed to poor vascularisation and stroma-driven interstitial pressure.",
+      "source_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7162455/",
+      "verification": "unverified_snippet"
+    },
+    "evidence_against": {
+      "claim": "In two orthotopic murine models gemcitabine was distributed nearly homogeneously, reaching both hypoxic and normoxic regions, and the authors concluded tissue penetration did not appear to limit its efficacy.",
+      "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4696432/",
+      "verification": "unverified_snippet"
+    },
+    "consequence": [
+      "The literature is genuinely contested on whether transport is what limits",
+      "gemcitabine in PDAC. The model rests on the first position. A calibration",
+      "that cannot return the answer 'the barrier is the wrong mechanism' is not a",
+      "calibration, so the harness reports the penetration constraint separately",
+      "and does not treat the barrier as given."
+    ]
+  },
+  "licence_note": [
+    "This file records numerical observations and citations, not any source's text.",
+    "Each value belongs to the cited publication; check its terms before reuse."
+  ]
+}

@@ -56,6 +56,8 @@ reports/*
 !reports/generator_benchmark.json
 !reports/chemical_diversity_measurement.json
 !reports/dataset_expansion_comparison.json
+!reports/prior_art_check.json
+!reports/tissue_calibration.json
 
 # Godot editor state
 godot_frontend/.godot/

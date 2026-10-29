@@ -6,6 +6,13 @@ The platform is engineered and tested. It is not validated. The code runs end to
 the suite passes, CI is green and the reporting states its own limits, which is exactly
 why the remaining work is scientific rather than technical.
 
+**Read [WHAT_WOULD_MAKE_THIS_USEFUL.md](WHAT_WOULD_MAKE_THIS_USEFUL.md) first.** It
+argues, with the measurements, that generation is not the bottleneck, that the
+cytotoxicity endpoint cannot express the modality producing the current survival gains
+in pancreatic cancer, and that the unoccupied niche is a calibrated microenvironment
+model rather than another candidate generator. This file is the itemised task list; that
+one says which items are worth the effort and why.
+
 Three measurements set the agenda below, all reproducible from this repository:
 
 - The PDAC potency model trains on 43 compounds over 32 independent scaffolds. Repeated

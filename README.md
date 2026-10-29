@@ -429,9 +429,18 @@ living.
 
 ### Where this is going
 
-[docs/ROADMAP.md](docs/ROADMAP.md) sets out the work in priority order, with the
-measurements behind each item. The short version: data first, because the potency
-estimator is data limited and everything else is downstream of it.
+[docs/WHAT_WOULD_MAKE_THIS_USEFUL.md](docs/WHAT_WOULD_MAKE_THIS_USEFUL.md) is the
+argument: generation is not the bottleneck, the cytotoxicity endpoint cannot express the
+modality producing the current survival gains in this disease, and the unoccupied niche
+is a calibrated microenvironment model rather than another candidate generator. It also
+says what to stop doing.
+
+[docs/ROADMAP.md](docs/ROADMAP.md) is the itemised task list, with the measurements
+behind each item. The short version has changed: data first was the plan, and importing
+2070 compounds from ChEMBL made the model measurably worse because that source is 355
+assays wearing one label. Calibrating the tissue model against within-study ratios is
+the step that needs neither a laboratory nor new data, and
+`scripts/calibrate_tissue_model.py` is the harness for it.
 
 ### One ground rule
 
