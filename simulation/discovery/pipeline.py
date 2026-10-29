@@ -167,10 +167,15 @@ class CandidateDiscoveryPipeline:
         objective space, which treats two molecules that score alike as
         interchangeable however different they are chemically. Above 0.0 the
         tie-break blends that crowding with Tanimoto distance to the structures
-        already kept, so the surviving population spans chemistry as well as
-        objective values. 0.5 weights the two equally. The default is 0.0 because
-        changing it changes which structures a published run explores, and the
-        committed example report was produced without it.
+        already kept. 0.5 weights the two equally.
+
+        It was built to widen the chemistry and, measured, it does not: over three
+        seeds it moved mean pairwise Tanimoto distance by -0.012 and scaffold count
+        by -0.3, both inside seed noise, with the front overflowing every
+        generation so the tie-break was certainly firing. See
+        scripts/measure_chemical_diversity.py and
+        DirectedMolecularOptimizer.diverse_truncation. It stays off by default and
+        is not a fix for the structural convergence in the candidate review.
 
         tissue_in_fitness closes the selection loop. When False (the default) selection
         uses the five chemistry and prediction objectives only, and the microenvironment

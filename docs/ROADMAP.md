@@ -29,7 +29,7 @@ import it. Items 1 and 2 below are both data problems before they are code probl
 
 | Action | Why |
 |---|---|
-| Expand the QSAR dataset | 43 compounds is the bottleneck. A conformal interval around 1330 fold makes any ranking nearly useless. With 200 to 500 homogeneous scaffolds from PANC-1 and MIA PaCa-2 in ChEMBL and GDSC, the model moves from ordering compounds to saying something about them. |
+| Expand the QSAR dataset | 43 compounds is the bottleneck. A conformal interval around 1330 fold makes any ranking nearly useless. With 200 to 500 homogeneous scaffolds from PANC-1 and MIA PaCa-2 in ChEMBL and GDSC, the model moves from ordering compounds to saying something about them. **The tooling for this now runs end to end**, see below. |
 | Calibrate the tissue model | It is exploratory today. Without a fit to real data, meaning published spheroid, organoid or dose response measurements, simulated growth inhibition is only a restatement of the QSAR. |
 | Propagate uncertainty | Instead of passing a point IC50 into the tissue model, sample from the conformal interval and report the resulting distribution of growth inhibition. The present design hides the uncertainty at the moment it matters most. |
 | Add minimum medicinal chemistry filters | PAINS, synthetic accessibility, reactivity alerts and stability filters, so the search stops producing candidates no chemist would want to make. |

@@ -326,18 +326,40 @@ GB-GA, REINVENT or a SELFIES method is simply unknown.
   generation and currently dominates; surrogate-assisted or multi-fidelity selection
   would let the population grow by orders of magnitude.
 - Diversity preservation. NSGA-II crowding distance operates on objective space, not
-  chemical space, so the population converges structurally.
+  chemical space, so the population converges structurally. Blending Tanimoto distance
+  into that tie-break has been tried and **does not fix it**, which narrows the problem
+  rather than solving it. Over three seeds at six generations and population 16 it moved
+  mean pairwise Tanimoto distance by -0.012 and distinct Murcko scaffolds by -0.3, both
+  inside seed noise, with the front overflowing every generation (20 to 28 members
+  against a population of 16) so the tie-break was certainly firing. Downweighting the
+  applicability-domain objective, which is maximised similarity to the training set, did
+  not widen the chemistry either. So the convergence is set somewhere other than
+  survivor selection, most likely in how offspring are generated. Reproduce with
+  `python scripts/measure_chemical_diversity.py`; the mechanism is available but off by
+  default as `chemical_diversity_weight`.
 
 **Done looks like.** A benchmark number against a published baseline, or a demonstrated
 increase in explored chemical diversity at equal compute.
 
 ### Challenge 3. Chemical plausibility, synthesizability and experimental validation
 
-**Where it stands.** Generated structures are RDKit-valid and pass valence checks. That
-is the entire plausibility assessment. There is no synthetic accessibility scoring, no
-retrosynthetic analysis, no stability or reactivity screening, and no check for
-pan-assay interference. Some published candidates are chemically odd on inspection, for
-example nucleoside analogues fused into dimers that no chemist would propose.
+**Where it stands.** Generated structures are RDKit-valid, pass valence checks, and are
+now bounded to a drug-like envelope: 600 Da, 45 heavy atoms, 12 rotatable bonds, 6 rings,
+a single connected component. PAINS, Brenk, NIH and synthetic accessibility are
+computed and reported, and can enter selection with `medchem_filters`. There is still no
+retrosynthetic analysis and no stability or reactivity screening.
+
+The envelope is a correctness fix, not a plausibility assessment. Before it, nothing in
+the search bounded molecular size at all: four successive crossovers took erlotinib from
+349 to 1131 Da, growing every step, and ten generations under size-favouring selection
+reached a mean of 76 kDa. The only size pressure was QED, which a caller can zero out
+through `objective_weights`. That is the mechanism behind the fused dimers this section
+used to describe. Reproduce either direction from
+`tests/level3_evolution/test_chemical_envelope.py`.
+
+What that buys is narrow. A molecule inside the envelope with no structural alert and a
+routine SA score is still only "not obviously impossible", and the rule sets flag
+approved drugs, so passing them means little on its own.
 
 **Why it matters.** A ranked list whose members cannot be made, or would decompose, or
 would trigger every assay they touch, is not a shortlist. Chemical judgement is the

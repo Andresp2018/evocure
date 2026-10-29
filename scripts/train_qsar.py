@@ -33,14 +33,30 @@ def main() -> int:
     parser.add_argument("--output", default=None,
                         help="Destination joblib path (default: models/scientific/pdac_qsar_v1.joblib)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument("--dataset", default=None,
+                        help="Dataset JSON to train on. Default is the curated "
+                             "data/reference/pdac_reference_dataset.json. Point this at "
+                             "the output of scripts/import_bioactivity.py to train on an "
+                             "expanded set; without it the expanded file is written and "
+                             "never read.")
     args = parser.parse_args()
 
     print("=" * 78)
     print("EVOCURE QSAR training")
     print("=" * 78)
 
-    manager = ScientificDataManager()
-    records = manager.load_reference_dataset(disease_id=args.disease)
+    if args.dataset:
+        dataset_path = Path(args.dataset).expanduser()
+        if not dataset_path.is_file():
+            print(f"\nERROR: no dataset at {dataset_path}", file=sys.stderr)
+            return 1
+        manager = ScientificDataManager(reference_dir=dataset_path.parent)
+        records = manager.load_reference_dataset(filename=dataset_path.name,
+                                                 disease_id=args.disease)
+        print(f"  Dataset file   : {dataset_path}")
+    else:
+        manager = ScientificDataManager()
+        records = manager.load_reference_dataset(disease_id=args.disease)
     print(f"  Dataset        : {manager.provenance.source_name} v{manager.provenance.version}")
     print(f"  Partition      : {args.disease}")
     print(f"  Compounds      : {len(records)}")

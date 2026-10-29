@@ -48,7 +48,8 @@ class ChemicalEnvelope:
       max_rotatable_bonds   Veber sets 10 for oral bioavailability; 12 leaves
                             headroom for the flexible linkers in kinase
                             inhibitors.
-      max_rings             6 ring systems is already a complex polycycle.
+      max_rings             6 rings, counted as SSSR rings rather than ring
+                            systems, is already a complex polycycle.
       min_heavy_atoms       Below this a fragment is not a candidate. The
                             search otherwise drifts to tiny molecules that
                             score well on size-penalised objectives.
@@ -598,12 +599,9 @@ class DirectedMolecularOptimizer:
         """Truncate a Pareto front on objective crowding and chemical distance.
 
         NSGA-II breaks ties inside an over-full front by crowding distance, which
-        is measured in objective space. Two structures that score alike are
-        therefore interchangeable to it however different they are chemically,
-        and the search converges structurally: the published run's candidates sit
-        at Tanimoto 0.6 to the seed drug. For molecular optimisation the point of
-        keeping a diverse population is to keep diverse chemistry, so the
-        tie-break has to see the molecules.
+        is measured in objective space, so two structures that score alike are
+        interchangeable to it however different they are chemically. This blends
+        Tanimoto distance into that tie-break.
 
         Selection is greedy. The most crowded-out individual goes in first, then
         each next pick maximises
@@ -614,9 +612,32 @@ class DirectedMolecularOptimizer:
         Tanimoto distance on Morgan fingerprints, radius 2. chemical_weight 0
         reproduces plain NSGA-II crowding, 1 ignores the objectives entirely.
 
-        This preserves chemical diversity. It does not establish that the extra
-        structures are any good, and a more diverse population of implausible
-        molecules is still implausible.
+        MEASURED, AND IT DID NOT WORK. This was built to address the structural
+        convergence in the project's own candidate review, where generated
+        structures cluster at Tanimoto 0.6 to the seed drug. It does not do that.
+        Over three seeds at six generations and population 16, against the plain
+        crowding tie-break, scripts/measure_chemical_diversity.py measured
+
+            mean pairwise Tanimoto distance   -0.012
+            distinct Murcko scaffolds          -0.3
+            mean of the five base objectives   +0.008
+
+        all inside seed noise, and the surviving population's own diversity ran
+        from 0.56 to 0.71 across seeds against 0.67 to 0.69 for the control. The
+        tie-break does fire, every generation: front 0 holds 20 to 28 members
+        against a population of 16. It simply does not move the chemistry, so
+        the convergence is set somewhere else, most likely in how offspring are
+        generated rather than in which survivors are kept. Downweighting the
+        applicability-domain objective, which is maximised similarity to the
+        training set, did not widen the chemistry either.
+
+        It is kept, off by default, because the mechanism is sound and the
+        measurement is worth having: it may matter at a population size where
+        front overflow is larger, and it saves the next person implementing it
+        from scratch. It is not a fix for structural convergence and must not be
+        described as one. Nor does it establish that any extra structures are
+        good; a more diverse population of implausible molecules is still
+        implausible.
         """
         if needed <= 0 or not front:
             return []
@@ -633,9 +654,15 @@ class DirectedMolecularOptimizer:
 
         def normalised_crowding(idx: int) -> float:
             value = crowding.get(idx, 0.0)
-            # Boundary individuals carry inf; they are the extremes of the front
-            # and keeping them is the behaviour NSGA-II intends.
-            return 1.0 if np.isinf(value) else min(1.0, float(value) / ceiling)
+            # Boundary individuals carry inf. They are the extremes of the front
+            # and NSGA-II keeps them ahead of any interior member, so they take
+            # 1.0 and the finite values are compressed below it. Scaling the
+            # finite values to the full range instead tied the best interior
+            # member with the boundary ones and lost that ordering, which at
+            # chemical_weight 0 means not reproducing plain NSGA-II.
+            if np.isinf(value):
+                return 1.0
+            return 0.99 * min(1.0, float(value) / ceiling)
 
         fingerprints: dict[int, Any] = {}
         for idx in front:

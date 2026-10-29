@@ -38,6 +38,42 @@ produced five candidates that are all gemcitabine analogues at Tanimoto 0.62 to
 rewards staying close to it. Scaffold diversity in the training data is what
 would let the search leave that neighbourhood with any confidence.
 
+### Getting a ChEMBL download
+
+The instruction above used to stop at "obtain a PANC-1 IC50 export", which is
+where the work stopped: ChEMBL's web interface does not make a cell line
+activity export straightforward. `scripts/fetch_chembl_bioactivity.py` does that
+one step against ChEMBL's public REST API.
+
+```bash
+# What is available for a cell line, without downloading anything
+python scripts/fetch_chembl_bioactivity.py --cell-line PANC-1 --survey
+
+# Fetch it, into the columns the importer reads
+python scripts/fetch_chembl_bioactivity.py --cell-line PANC-1 --endpoint IC50
+python scripts/fetch_chembl_bioactivity.py --cell-line "MIA PaCa-2" --endpoint IC50
+```
+
+It writes a CSV to `data/raw/`, which is gitignored, and a `.provenance.json`
+beside it recording the exact query, the ChEMBL release, the counts and what was
+dropped, so a dataset built this way can be traced back to the request that
+produced it.
+
+It drops and counts, rather than keeping: records ChEMBL itself flags with a
+`data_validity_comment`, censored values such as `>100 uM`, rows with no
+structure, and units the importer cannot convert exactly. It does not clean,
+average, impute or interpret, and everything it writes still has to pass the
+assay comparability gate below.
+
+This is the only part of EVOCURE that touches the network, and only when you run
+it. The pipeline stays offline.
+
+The cell line name must match ChEMBL exactly. `PANC-1` and
+`Gemcitabine-resistant PANC-1` are separate CELL-LINE targets and separate
+biology; a loose match that pooled them would be the exact failure the importer
+exists to prevent. The script refuses an inexact match and lists the near
+misses.
+
 ### Importing a download
 
 ```bash
@@ -48,11 +84,18 @@ python scripts/import_bioactivity.py data/raw/chembl_panc1.csv --inspect
 python scripts/import_bioactivity.py data/raw/chembl_panc1.csv \
     --endpoint IC50 --cell-line PANC-1 --disease PDAC \
     --merge-into-curated \
-    --output data/reference/pdac_expanded_dataset.json
+    --output data/processed/pdac_expanded_dataset.json
 
-# Retrain and watch the conformal interval, which is the number that matters
-python scripts/train_qsar.py
+# Retrain and watch the conformal interval, which is the number that matters.
+# --dataset is required: without it the script loads the curated file and the
+# import you just made is written and never read.
+python scripts/train_qsar.py --dataset data/processed/pdac_expanded_dataset.json
 ```
+
+The output goes to `data/processed/`, which is gitignored. That is deliberate:
+`data/reference/` is published under CC-BY 4.0, and a dataset derived from ChEMBL
+carries CC BY-SA 3.0, so writing one into the other would misstate the licence of
+the result.
 
 The importer rejects, and counts, anything outside the assay group you name:
 different cell lines, different endpoints, censored values such as `>100 uM`,

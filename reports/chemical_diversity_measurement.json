@@ -1,0 +1,104 @@
+{
+  "generations": 6,
+  "population_size": 16,
+  "seeds": [
+    11,
+    2024,
+    777
+  ],
+  "runs": [
+    {
+      "seed": 11,
+      "diversity_weight": 0.0,
+      "potency_model_available": true,
+      "structures_evaluated": 108,
+      "variants": 104,
+      "population_diversity": 0.6654,
+      "variant_diversity": 0.7177,
+      "distinct_scaffolds": 35,
+      "mean_similarity_to_seeds": 0.565,
+      "mean_objective_quality": 0.4973
+    },
+    {
+      "seed": 11,
+      "diversity_weight": 0.5,
+      "potency_model_available": true,
+      "structures_evaluated": 106,
+      "variants": 102,
+      "population_diversity": 0.7116,
+      "variant_diversity": 0.7355,
+      "distinct_scaffolds": 39,
+      "mean_similarity_to_seeds": 0.5117,
+      "mean_objective_quality": 0.4899
+    },
+    {
+      "seed": 2024,
+      "diversity_weight": 0.0,
+      "potency_model_available": true,
+      "structures_evaluated": 105,
+      "variants": 101,
+      "population_diversity": 0.6709,
+      "variant_diversity": 0.739,
+      "distinct_scaffolds": 30,
+      "mean_similarity_to_seeds": 0.563,
+      "mean_objective_quality": 0.5039
+    },
+    {
+      "seed": 2024,
+      "diversity_weight": 0.5,
+      "potency_model_available": true,
+      "structures_evaluated": 107,
+      "variants": 103,
+      "population_diversity": 0.6514,
+      "variant_diversity": 0.6939,
+      "distinct_scaffolds": 28,
+      "mean_similarity_to_seeds": 0.5797,
+      "mean_objective_quality": 0.5145
+    },
+    {
+      "seed": 777,
+      "diversity_weight": 0.0,
+      "potency_model_available": true,
+      "structures_evaluated": 105,
+      "variants": 101,
+      "population_diversity": 0.6882,
+      "variant_diversity": 0.7139,
+      "distinct_scaffolds": 38,
+      "mean_similarity_to_seeds": 0.563,
+      "mean_objective_quality": 0.4902
+    },
+    {
+      "seed": 777,
+      "diversity_weight": 0.5,
+      "potency_model_available": true,
+      "structures_evaluated": 108,
+      "variants": 104,
+      "population_diversity": 0.5647,
+      "variant_diversity": 0.7048,
+      "distinct_scaffolds": 35,
+      "mean_similarity_to_seeds": 0.6013,
+      "mean_objective_quality": 0.5101
+    }
+  ],
+  "summary": {
+    "weight_0.0": {
+      "variants": 102.0,
+      "variant_diversity": 0.7235,
+      "distinct_scaffolds": 34.3333,
+      "mean_similarity_to_seeds": 0.5637,
+      "mean_objective_quality": 0.4971
+    },
+    "weight_0.5": {
+      "variants": 103.0,
+      "variant_diversity": 0.7114,
+      "distinct_scaffolds": 34.0,
+      "mean_similarity_to_seeds": 0.5642,
+      "mean_objective_quality": 0.5048
+    }
+  },
+  "diversity_delta": -0.0121,
+  "scaffold_delta": -0.3333,
+  "objective_delta": 0.0077,
+  "verdict": "Chemical tie-breaking did not broaden the search on these seeds. On this population size the fronts may rarely overflow, which is where the tie-break applies at all.",
+  "caveat": "Mean pairwise Tanimoto distance and Murcko scaffold counts measure spread, not quality. Neither says the structures can be made or do anything, and three seeds is too few to claim a general effect."
+}
