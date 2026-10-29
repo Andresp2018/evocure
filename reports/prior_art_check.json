@@ -1,0 +1,428 @@
+{
+  "results_file": "/home/user/evocure/reports/pdac_publication_test/experiment_results.json",
+  "checked_utc": "2026-10-29T15:38:08Z",
+  "similarity_threshold_pct": 70,
+  "reference_panel": {
+    "GEMCITABINE": {
+      "role": "chemotherapy backbone",
+      "chembl_id": "CHEMBL888",
+      "max_phase": "4.0",
+      "smiles": "Nc1ccn([C@@H]2O[C@H](CO)[C@@H](O)C2(F)F)c(=O)n1"
+    },
+    "FLUOROURACIL": {
+      "role": "chemotherapy backbone",
+      "chembl_id": "CHEMBL185",
+      "max_phase": "4.0",
+      "smiles": "O=c1[nH]cc(F)c(=O)[nH]1"
+    },
+    "PACLITAXEL": {
+      "role": "chemotherapy backbone",
+      "chembl_id": "CHEMBL428647",
+      "max_phase": "4.0",
+      "smiles": "CC(=O)O[C@H]1C(=O)[C@@]2(C)[C@H]([C@H](OC(=O)c3ccccc3)[C@]3(O)C[C@H](OC(=O)[C@H](O)[C@@H](NC(=O)c4ccccc4)c4ccccc4)C(C)=C1C3(C)C)[C@]1(OC(C)=O)CO[C@@H]1C[C@@H]2O"
+    },
+    "IRINOTECAN": {
+      "role": "chemotherapy backbone",
+      "chembl_id": "CHEMBL481",
+      "max_phase": "4.0",
+      "smiles": "CCc1c2c(nc3ccc(OC(=O)N4CCC(N5CCCCC5)CC4)cc13)-c1cc3c(c(=O)n1C2)COC(=O)[C@]3(O)CC"
+    },
+    "ERLOTINIB": {
+      "role": "targeted, EGFR",
+      "chembl_id": "CHEMBL553",
+      "max_phase": "4.0",
+      "smiles": "C#Cc1cccc(Nc2ncnc3cc(OCCOC)c(OCCOC)cc23)c1"
+    },
+    "SOTORASIB": {
+      "role": "targeted, KRAS G12C",
+      "chembl_id": "CHEMBL4535757",
+      "max_phase": "4.0",
+      "smiles": "C=CC(=O)N1CCN(c2nc(=O)n(-c3c(C)ccnc3C(C)C)c3nc(-c4c(O)cccc4F)c(F)cc23)[C@@H](C)C1"
+    },
+    "ADAGRASIB": {
+      "role": "targeted, KRAS G12C",
+      "chembl_id": "CHEMBL4594350",
+      "max_phase": "4.0",
+      "smiles": "C=C(F)C(=O)N1CCN(c2nc(OC[C@@H]3CCCN3C)nc3c2CCN(c2cccc4cccc(Cl)c24)C3)C[C@@H]1CC#N"
+    }
+  },
+  "candidates": [
+    {
+      "label": "Candidate_01",
+      "canonical_smiles": "N#Cc1ccn(C[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@@H]2O)c(=O)n1",
+      "already_in_public_databases": false,
+      "pubchem_exact": {
+        "found": false,
+        "cids": []
+      },
+      "chembl_exact": {
+        "found": false,
+        "matches": []
+      },
+      "chembl_neighbours": {
+        "count": 0,
+        "threshold_pct": 70,
+        "nearest": [],
+        "highest_phase_among_neighbours": null
+      },
+      "tanimoto_to_pdac_drugs": [
+        {
+          "drug": "GEMCITABINE",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL888",
+          "tanimoto": 0.6545
+        },
+        {
+          "drug": "ADAGRASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4594350",
+          "tanimoto": 0.1356
+        },
+        {
+          "drug": "IRINOTECAN",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL481",
+          "tanimoto": 0.1316
+        },
+        {
+          "drug": "SOTORASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4535757",
+          "tanimoto": 0.125
+        },
+        {
+          "drug": "PACLITAXEL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL428647",
+          "tanimoto": 0.1048
+        },
+        {
+          "drug": "FLUOROURACIL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL185",
+          "tanimoto": 0.0769
+        },
+        {
+          "drug": "ERLOTINIB",
+          "role": "targeted, EGFR",
+          "chembl_id": "CHEMBL553",
+          "tanimoto": 0.0652
+        }
+      ]
+    },
+    {
+      "label": "Candidate_02",
+      "canonical_smiles": "N#Cc1ccn(C[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@H]2O)c(=O)n1",
+      "already_in_public_databases": false,
+      "pubchem_exact": {
+        "found": false,
+        "cids": []
+      },
+      "chembl_exact": {
+        "found": false,
+        "matches": []
+      },
+      "chembl_neighbours": {
+        "count": 0,
+        "threshold_pct": 70,
+        "nearest": [],
+        "highest_phase_among_neighbours": null
+      },
+      "tanimoto_to_pdac_drugs": [
+        {
+          "drug": "GEMCITABINE",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL888",
+          "tanimoto": 0.6545
+        },
+        {
+          "drug": "ADAGRASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4594350",
+          "tanimoto": 0.1356
+        },
+        {
+          "drug": "IRINOTECAN",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL481",
+          "tanimoto": 0.1316
+        },
+        {
+          "drug": "SOTORASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4535757",
+          "tanimoto": 0.125
+        },
+        {
+          "drug": "PACLITAXEL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL428647",
+          "tanimoto": 0.1048
+        },
+        {
+          "drug": "FLUOROURACIL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL185",
+          "tanimoto": 0.0769
+        },
+        {
+          "drug": "ERLOTINIB",
+          "role": "targeted, EGFR",
+          "chembl_id": "CHEMBL553",
+          "tanimoto": 0.0652
+        }
+      ]
+    },
+    {
+      "label": "Candidate_03",
+      "canonical_smiles": "N#Cc1ccn([C@@H]2O[C@H](Cn3ccc(N)nc3=O)[C@@H](O)C2(F)F)c(=O)n1",
+      "already_in_public_databases": false,
+      "pubchem_exact": {
+        "found": false,
+        "cids": []
+      },
+      "chembl_exact": {
+        "found": false,
+        "matches": []
+      },
+      "chembl_neighbours": {
+        "count": 0,
+        "threshold_pct": 70,
+        "nearest": [],
+        "highest_phase_among_neighbours": null
+      },
+      "tanimoto_to_pdac_drugs": [
+        {
+          "drug": "GEMCITABINE",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL888",
+          "tanimoto": 0.6545
+        },
+        {
+          "drug": "ADAGRASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4594350",
+          "tanimoto": 0.1356
+        },
+        {
+          "drug": "IRINOTECAN",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL481",
+          "tanimoto": 0.1316
+        },
+        {
+          "drug": "SOTORASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4535757",
+          "tanimoto": 0.125
+        },
+        {
+          "drug": "PACLITAXEL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL428647",
+          "tanimoto": 0.1048
+        },
+        {
+          "drug": "FLUOROURACIL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL185",
+          "tanimoto": 0.0769
+        },
+        {
+          "drug": "ERLOTINIB",
+          "role": "targeted, EGFR",
+          "chembl_id": "CHEMBL553",
+          "tanimoto": 0.0652
+        }
+      ]
+    },
+    {
+      "label": "Candidate_04",
+      "canonical_smiles": "Nc1ccn(CC[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@@H]2O)c(=O)n1",
+      "already_in_public_databases": false,
+      "pubchem_exact": {
+        "found": false,
+        "cids": []
+      },
+      "chembl_exact": {
+        "found": false,
+        "matches": []
+      },
+      "chembl_neighbours": {
+        "count": 4,
+        "threshold_pct": 70,
+        "nearest": [
+          {
+            "chembl_id": "CHEMBL1982111",
+            "pref_name": null,
+            "similarity": 73.47,
+            "max_phase": null
+          },
+          {
+            "chembl_id": "CHEMBL1637",
+            "pref_name": "GEMCITABINE HYDROCHLORIDE",
+            "similarity": 73.47,
+            "max_phase": "4.0"
+          },
+          {
+            "chembl_id": "CHEMBL264883",
+            "pref_name": null,
+            "similarity": 73.47,
+            "max_phase": null
+          },
+          {
+            "chembl_id": "CHEMBL888",
+            "pref_name": "GEMCITABINE",
+            "similarity": 73.47,
+            "max_phase": "4.0"
+          }
+        ],
+        "highest_phase_among_neighbours": "4.0"
+      },
+      "tanimoto_to_pdac_drugs": [
+        {
+          "drug": "GEMCITABINE",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL888",
+          "tanimoto": 0.7347
+        },
+        {
+          "drug": "IRINOTECAN",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL481",
+          "tanimoto": 0.1284
+        },
+        {
+          "drug": "SOTORASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4535757",
+          "tanimoto": 0.1215
+        },
+        {
+          "drug": "ADAGRASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4594350",
+          "tanimoto": 0.113
+        },
+        {
+          "drug": "PACLITAXEL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL428647",
+          "tanimoto": 0.1102
+        },
+        {
+          "drug": "FLUOROURACIL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL185",
+          "tanimoto": 0.0847
+        },
+        {
+          "drug": "ERLOTINIB",
+          "role": "targeted, EGFR",
+          "chembl_id": "CHEMBL553",
+          "tanimoto": 0.0575
+        }
+      ]
+    },
+    {
+      "label": "Candidate_05",
+      "canonical_smiles": "Nc1ccn(CC[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@H]2O)c(=O)n1",
+      "already_in_public_databases": false,
+      "pubchem_exact": {
+        "found": false,
+        "cids": []
+      },
+      "chembl_exact": {
+        "found": false,
+        "matches": []
+      },
+      "chembl_neighbours": {
+        "count": 4,
+        "threshold_pct": 70,
+        "nearest": [
+          {
+            "chembl_id": "CHEMBL1982111",
+            "pref_name": null,
+            "similarity": 73.47,
+            "max_phase": null
+          },
+          {
+            "chembl_id": "CHEMBL1637",
+            "pref_name": "GEMCITABINE HYDROCHLORIDE",
+            "similarity": 73.47,
+            "max_phase": "4.0"
+          },
+          {
+            "chembl_id": "CHEMBL264883",
+            "pref_name": null,
+            "similarity": 73.47,
+            "max_phase": null
+          },
+          {
+            "chembl_id": "CHEMBL888",
+            "pref_name": "GEMCITABINE",
+            "similarity": 73.47,
+            "max_phase": "4.0"
+          }
+        ],
+        "highest_phase_among_neighbours": "4.0"
+      },
+      "tanimoto_to_pdac_drugs": [
+        {
+          "drug": "GEMCITABINE",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL888",
+          "tanimoto": 0.7347
+        },
+        {
+          "drug": "IRINOTECAN",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL481",
+          "tanimoto": 0.1284
+        },
+        {
+          "drug": "SOTORASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4535757",
+          "tanimoto": 0.1215
+        },
+        {
+          "drug": "ADAGRASIB",
+          "role": "targeted, KRAS G12C",
+          "chembl_id": "CHEMBL4594350",
+          "tanimoto": 0.113
+        },
+        {
+          "drug": "PACLITAXEL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL428647",
+          "tanimoto": 0.1102
+        },
+        {
+          "drug": "FLUOROURACIL",
+          "role": "chemotherapy backbone",
+          "chembl_id": "CHEMBL185",
+          "tanimoto": 0.0847
+        },
+        {
+          "drug": "ERLOTINIB",
+          "role": "targeted, EGFR",
+          "chembl_id": "CHEMBL553",
+          "tanimoto": 0.0575
+        }
+      ]
+    }
+  ],
+  "already_in_public_databases": 0,
+  "candidates_checked": 5,
+  "databases_searched": [
+    "PubChem PUG-REST exact structure",
+    "ChEMBL exact flexmatch",
+    "ChEMBL similarity search"
+  ],
+  "not_searched": [
+    "SureChEMBL and the patent literature",
+    "internal or commercial compound collections"
+  ],
+  "caveat": "Absence from PubChem and ChEMBL is not novelty, because the patent literature was not searched. Presence is conclusive the other way. Tanimoto to an approved drug is a structural measurement and carries no information about activity in either direction."
+}

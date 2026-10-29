@@ -58,6 +58,7 @@ reports/*
 !reports/dataset_expansion_comparison.json
 !reports/prior_art_check.json
 !reports/tissue_calibration.json
+!reports/search_budget_comparison.json
 
 # Godot editor state
 godot_frontend/.godot/

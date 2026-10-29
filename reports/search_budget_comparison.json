@@ -1,0 +1,194 @@
+{
+  "question": "Does a five times larger search budget improve the candidates?",
+  "answer": "No. It made them worse on every measure that matters, and it degraded the shortlist's own diversity.",
+  "runs": {
+    "20_generations": {
+      "generations": 20,
+      "population_size": 24,
+      "structures_evaluated": 467,
+      "unique_scaffolds": 115,
+      "elapsed_seconds": 1386.2,
+      "reported_candidates": 5,
+      "distinct_constitutions": 5,
+      "stereoisomer_families": {},
+      "best_tgi_pct": 76.254,
+      "tanimoto_to_seed_min": 0.6207,
+      "tanimoto_to_seed_max": 0.7826,
+      "all_bands_span_zero": true,
+      "assay_separates_controls": true,
+      "candidates": [
+        {
+          "label": "Candidate_01",
+          "canonical_smiles": "N#Cc1ccn(C[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@@H]2O)c(=O)n1",
+          "inchikey": "ZSKCGNNRQRJSIF-FBIMIBRVSA-N",
+          "mol_weight": 366.28,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.6545,
+          "tgi_mean_pct": 63.752,
+          "qed": 0.6913,
+          "sa_score": 4.274,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_02",
+          "canonical_smiles": "Nc1ccn([C@@H]2O[C@H](CCn3ncc(F)nc3=O)[C@@H](O)C2(F)F)c(=O)n1",
+          "inchikey": "BBNOOVVXAYGCAT-BDODKLCJSA-N",
+          "mol_weight": 374.28,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.6429,
+          "tgi_mean_pct": 64.34,
+          "qed": 0.6878,
+          "sa_score": 4.318,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_03",
+          "canonical_smiles": "Nc1ccn(C[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@H]2C(=O)O)c(=O)n1",
+          "inchikey": "MYWCKSMYURFBNR-KNBVPPQFSA-N",
+          "mol_weight": 384.3,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.6667,
+          "tgi_mean_pct": 71.116,
+          "qed": 0.592,
+          "sa_score": 4.191,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_04",
+          "canonical_smiles": "Nc1ccn([C@@H]2O[C@H](Cn3c(C(=O)O)cc(F)nc3=O)[C@@H](O)C2(F)F)c(=O)n1",
+          "inchikey": "LSNCQPWQYYMUOL-KNBVPPQFSA-N",
+          "mol_weight": 403.27,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.6207,
+          "tgi_mean_pct": 76.254,
+          "qed": 0.533,
+          "sa_score": 4.287,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_05",
+          "canonical_smiles": "Nc1ccn(C[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@@H]2O)c(=O)n1",
+          "inchikey": "RFQHSPXNBVMUFH-BDODKLCJSA-N",
+          "mol_weight": 356.29,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.7826,
+          "tgi_mean_pct": 67.79,
+          "qed": 0.6046,
+          "sa_score": 4.101,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        }
+      ]
+    },
+    "100_generations": {
+      "generations": 100,
+      "population_size": 24,
+      "structures_evaluated": 1872,
+      "unique_scaffolds": 232,
+      "elapsed_seconds": 6295.7,
+      "reported_candidates": 5,
+      "distinct_constitutions": 3,
+      "stereoisomer_families": {
+        "ZSKCGNNRQRJSIF": [
+          "Candidate_01",
+          "Candidate_02"
+        ],
+        "XKYGYWMCIXOGKI": [
+          "Candidate_04",
+          "Candidate_05"
+        ]
+      },
+      "best_tgi_pct": 63.752,
+      "tanimoto_to_seed_min": 0.6545,
+      "tanimoto_to_seed_max": 0.7347,
+      "all_bands_span_zero": true,
+      "assay_separates_controls": true,
+      "candidates": [
+        {
+          "label": "Candidate_01",
+          "canonical_smiles": "N#Cc1ccn(C[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@@H]2O)c(=O)n1",
+          "inchikey": "ZSKCGNNRQRJSIF-FBIMIBRVSA-N",
+          "mol_weight": 366.28,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.6545,
+          "tgi_mean_pct": 63.752,
+          "qed": 0.6913,
+          "sa_score": 4.274,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_02",
+          "canonical_smiles": "N#Cc1ccn(C[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@H]2O)c(=O)n1",
+          "inchikey": "ZSKCGNNRQRJSIF-DVVUODLYSA-N",
+          "mol_weight": 366.28,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.6545,
+          "tgi_mean_pct": 63.752,
+          "qed": 0.6913,
+          "sa_score": 4.274,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_03",
+          "canonical_smiles": "N#Cc1ccn([C@@H]2O[C@H](Cn3ccc(N)nc3=O)[C@@H](O)C2(F)F)c(=O)n1",
+          "inchikey": "JVNUVTLPWWYCPA-FBIMIBRVSA-N",
+          "mol_weight": 366.28,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.6545,
+          "tgi_mean_pct": 63.752,
+          "qed": 0.6913,
+          "sa_score": 4.274,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_04",
+          "canonical_smiles": "Nc1ccn(CC[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@@H]2O)c(=O)n1",
+          "inchikey": "XKYGYWMCIXOGKI-AVPPRXQKSA-N",
+          "mol_weight": 370.32,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.7347,
+          "tgi_mean_pct": 62.526,
+          "qed": 0.6165,
+          "sa_score": 4.07,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        },
+        {
+          "label": "Candidate_05",
+          "canonical_smiles": "Nc1ccn(CC[C@H]2O[C@@H](n3ccc(N)nc3=O)C(F)(F)[C@H]2O)c(=O)n1",
+          "inchikey": "XKYGYWMCIXOGKI-PPKCKEKNSA-N",
+          "mol_weight": 370.32,
+          "nearest_seed": "Gemcitabine",
+          "tanimoto_to_nearest_seed": 0.7347,
+          "tgi_mean_pct": 62.526,
+          "qed": 0.6165,
+          "sa_score": 4.07,
+          "medchem_alerts": 0,
+          "potency_band_spans_zero": true
+        }
+      ]
+    }
+  },
+  "deltas": {
+    "structures_evaluated": "467 -> 1872 (4.0x)",
+    "unique_scaffolds": "115 -> 232 (2.0x)",
+    "compute": "1386s -> 6296s (4.5x)",
+    "best_tgi_pct": "76.25 -> 63.75 (worse)",
+    "closest_to_seed": "0.621 -> 0.654 (less novel)",
+    "distinct_constitutions_in_the_shortlist": "5 of 5 -> 3 of 5 (worse)"
+  },
+  "findings": [
+    "Four times the structures and twice the scaffolds, at four and a half times the compute, produced a lower best growth inhibition (76.25% to 63.75%) and a less novel best candidate (Tanimoto to the nearest seed rose from 0.621 to 0.655). The search budget is not the constraint.",
+    "The 100 generation shortlist held three distinct constitutions presented as five candidates, two of them stereoisomer pairs. The 20 generation shortlist held five. Every score in the pipeline is blind to stereochemistry, so a pair's composite utility matches to the last digit and taking the top five fills consecutive slots from one constitution. The defect therefore worsens with more search. Fixed in simulation/discovery/pipeline.py, pinned by tests/level3_evolution/test_shortlist_diversity.py.",
+    "Both runs reach the same honest headline: every candidate separates from the negative control at its point estimate and every potency interval also admits no effect at all. More search does not narrow a conformal interval that comes from the training set.",
+    "Controls separated in both runs, so neither result is an artifact of a broken assay."
+  ],
+  "caveat": "One run per budget, one seed set. The direction is consistent with the structural convergence measured elsewhere in this repository, but two runs cannot establish an effect size."
+}

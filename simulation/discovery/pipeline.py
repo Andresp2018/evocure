@@ -894,9 +894,53 @@ class CandidateDiscoveryPipeline:
         ranked = sorted(final_list, key=lambda c: c.get("composite_utility", 0.0), reverse=True)
         variants = [candidate for candidate in ranked if candidate["canonical_smiles"] not in seed_smiles]
 
+        # Taking the top N outright fills consecutive slots with stereoisomers.
+        # They are distinct SMILES, so nothing here was deduplicating them, and
+        # every score in this pipeline is identical between them: the descriptors,
+        # the Morgan fingerprint the QSAR reads, and the tissue response all
+        # ignore stereochemistry, so their composite utility matches to the last
+        # digit and the ranking between them is arbitrary. Measured on a 100
+        # generation run, the top five held three constitutions, two of them
+        # stereoisomer pairs, and the report presented it as five candidates. A
+        # shortlist that overstates its own diversity is worse at longer search,
+        # which is the opposite of what more search should buy.
+        #
+        # So one representative per constitution comes first, by InChIKey
+        # skeleton block, and remaining slots are filled from what is left rather
+        # than returning fewer candidates than asked for. Nothing is hidden: the
+        # families are reported.
+        def constitution(candidate: dict[str, Any]) -> str:
+            key = getattr(candidate.get("compound_record"), "inchi_key", "") or ""
+            return key.split("-")[0] if key else candidate["canonical_smiles"]
+
+        families: dict[str, list[str]] = {}
+        for candidate in variants:
+            families.setdefault(constitution(candidate), []).append(candidate["compound_id"])
+
+        chosen: list[dict[str, Any]] = []
+        used: set[str] = set()
+        for candidate in variants:
+            if len(chosen) >= candidate_count:
+                break
+            skeleton = constitution(candidate)
+            if skeleton in used:
+                continue
+            used.add(skeleton)
+            chosen.append(candidate)
+        if len(chosen) < candidate_count:
+            for candidate in variants:
+                if len(chosen) >= candidate_count:
+                    break
+                if candidate not in chosen:
+                    chosen.append(candidate)
+
         return {
             "evaluated_candidates": [candidate_summary(c) for c in final_list],
-            "top_candidates": [candidate_summary(c) for c in variants[:candidate_count]],
+            "top_candidates": [candidate_summary(c) for c in chosen],
+            "distinct_constitutions_reported": len({constitution(c) for c in chosen}),
+            "stereoisomer_families": {
+                skeleton: ids for skeleton, ids in families.items() if len(ids) > 1
+            },
             "seed_controls": [candidate_summary(c) for c in ranked if c["canonical_smiles"] in seed_smiles],
             "requested_candidate_count": candidate_count,
             "objective_weights": objective_weights or {},
