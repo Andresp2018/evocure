@@ -585,6 +585,26 @@ def summary_section(pdf: Report, data: dict) -> None:
         corrected = data.get("candidates_separating_bonferroni", [])
         names = ", ".join(ascii_only(s).replace("_", " ") for s in separated)
 
+        uncertainty = data.get("uncertainty_summary") or {}
+        if uncertainty.get("bands_computed") and (
+                uncertainty["bands_spanning_zero"] == uncertainty["bands_computed"]):
+            pdf.callout(
+                "Every one of these separations also admits no effect",
+                f"The table above reports each candidate at its point estimate of "
+                f"potency. Carrying the potency model's own 95% conformal interval "
+                f"through the same tissue simulation gives, for all "
+                f"{uncertainty['bands_computed']} candidates, a band of responses that "
+                f"includes zero.\n\n"
+                f"So the p values are real and they are not measuring what they appear "
+                f"to measure. They describe how reproducibly the simulation returns the "
+                f"same answer across seeds, given one assumed potency. They say nothing "
+                f"about whether that potency is right, and the model itself cannot rule "
+                f"out that these compounds do nothing.\n\n"
+                f"Each candidate page shows its own band. This is the number to read "
+                f"before the p value, not after it.",
+                tone="warn",
+            )
+
         provenances = {c.get("potency_provenance") for c in candidates}
         transfer = load_transfer_curve()
         if provenances == {"calibrated_qsar"} and transfer:
@@ -946,6 +966,50 @@ def candidate_pages(pdf: Report, data: dict) -> None:
                  f"{comparison.get('reference_count', 0)} curated reference drugs"),
             ], label_w=44)
 
+        band = entry.get("potency_uncertainty") or {}
+        if band.get("applicable"):
+            pdf.h2("The same simulation across the potency interval")
+            rows = [[fmt(s["ic50_um"], 4), fmt(s["tgi_mean_pct"], 1)]
+                    for s in band.get("samples", [])]
+            pdf.table(["Assigned IC50 (uM)", "Growth inhibition %"],
+                      [60, 60], rows, ["R", "R"])
+            low, high = band.get("tgi_range_pct", [None, None])
+            pdf.callout(
+                "What the uncertainty actually costs",
+                f"The potency above is a prediction, not a measurement, and its 95% "
+                f"conformal interval spans a factor of "
+                f"{band.get('ic50_interval_fold', 0):,.0f} in IC50. Running the same "
+                f"tissue model across that interval gives growth inhibition anywhere "
+                f"from {fmt(low, 1)} % to {fmt(high, 1)} %, against the "
+                f"{fmt(band.get('tgi_at_point_estimate_pct'), 1)} % reported at the "
+                f"point estimate.\n\n"
+                + ascii_only(band.get("interpretation", "")) + "\n\n"
+                "Conformal prediction gives a set with 95% coverage, not a "
+                "distribution, so no mean or spread over this band is quoted: the "
+                "method does not say where inside the interval the truth lies.",
+                tone="warn",
+            )
+        elif band:
+            pdf.small(
+                "Potency interval not propagated: " + ascii_only(band.get("reason", "")) + ".")
+
+        medchem = entry.get("medchem") or {}
+        if medchem:
+            pdf.h2("Could a chemist make this?")
+            pdf.table(
+                ["SA score", "Band", "Alerts", "Families", "Verdict"],
+                [24, 30, 20, 40, 60],
+                [[fmt(medchem.get("sa_score"), 2),
+                  ascii_only(medchem.get("sa_band", "")),
+                  str(medchem.get("alert_count", 0)),
+                  ", ".join(ascii_only(f) for f in medchem.get("alert_families", [])) or "none",
+                  ascii_only(str(medchem.get("verdict", ""))[:46])]],
+                ["R", "L", "R", "L", "L"],
+            )
+            if medchem.get("flags"):
+                pdf.small("Flags: " + ascii_only("; ".join(medchem["flags"])) + ".")
+            pdf.small(ascii_only(medchem.get("caveat", "")))
+
         pdf.h2("Potential, and what it rests on")
         signals, unknowns = potential_profile(entry, data)
         pdf.table(
@@ -1033,10 +1097,20 @@ def potential_profile(entry: dict, data: dict) -> tuple[list[list[str]], list[st
          f"{novelty.get('corpus_size', 0)} local structures"],
     ]
 
+    medchem = entry.get("medchem") or {}
+    if medchem:
+        rows.append([
+            "Medicinal chemistry",
+            ("alerts present" if medchem.get("alert_count")
+             else "no alerts"),
+            f"SA {fmt(medchem.get('sa_score'), 2)} ({ascii_only(medchem.get('sa_band',''))}), "
+            f"PAINS, Brenk and NIH catalogues",
+        ])
+
     unknowns = [
-        "synthetic accessibility and whether a route exists",
-        "chemical stability and reactivity",
-        "assay interference liability (no PAINS screen)",
+        "whether a synthetic route actually exists (SA score estimates difficulty, "
+        "it does not plan a synthesis)",
+        "chemical stability and reactivity under real conditions",
         "absorption, distribution, metabolism and excretion in a living system",
         "whether the compound reaches a pancreatic tumour through desmoplastic stroma",
         "any experimental measurement whatsoever",

@@ -38,9 +38,12 @@ from rdkit import Chem
 from rdkit.Chem import Draw, Descriptors, rdMolDescriptors
 from scipy import stats
 
+from simulation.biology.registry import DiseaseRegistry
 from simulation.core.engine import EVOCUREEngine
 from simulation.core.acceleration import status as compute_status
+from simulation.chemistry.medchem_filters import assess as medchem_assess
 from simulation.core.structure_archive import StructureArchive
+from simulation.pharmacology.uncertainty import propagate_potency_uncertainty
 from simulation.discovery.pipeline import CandidateDiscoveryPipeline
 from simulation.discovery.workbench import (
     assess_local_novelty,
@@ -152,6 +155,10 @@ def main():
         # microenvironment and its growth inhibition is a selection objective, so the
         # tumour model drives the search instead of only reporting on its output.
         "tissue_in_fitness": True,
+        # PAINS, Brenk, NIH and synthetic accessibility as a further
+        # objective. Scores rather than rejects: these rule sets flag
+        # approved drugs, paclitaxel among them.
+        "medchem_filters": True,
     }
     print("PLAN", plan["provider"], settings, flush=True)
 
@@ -223,6 +230,47 @@ def main():
         "reference_controls": [],
     }
 
+
+    def uncertainty_band(record, model_info):
+        """Carry the conformal interval through the tissue model.
+
+        Only for compounds whose potency is predicted. A curated drug has a
+        measured IC50, so a conformal interval does not apply to it and inventing
+        one would misrepresent the better evidence.
+        """
+        if model_info.get("potency_provenance") != "calibrated_qsar":
+            return {
+                "applicable": False,
+                "reason": f"potency is {model_info.get('potency_provenance')}, "
+                          f"not a model prediction with an interval",
+            }
+        quantile = model_info.get("conformal_q_95_log_units")
+        point = model_info.get("ic50_sensitive_um")
+        if not isinstance(quantile, (int, float)) or not isinstance(point, (int, float)):
+            return {"applicable": False, "reason": "no conformal interval recorded"}
+
+        base = dict(engine._tissue_pharmacology(record)[0])
+
+        def run_tissue(ic50_um):
+            profile = dict(base)
+            profile["ic50_sensitive_um"] = ic50_um
+            profile["ic50_resistant_um"] = ic50_um * 4.5
+            profile["ic50_healthy_um"] = ic50_um * 12.0
+            values = []
+            for seed in REPLICATES[:3]:
+                sim = DiseaseRegistry().create("PDAC", seed=seed, nx=36, ny=28)
+                values.append(sim.run_controlled_comparison(
+                    compound=record, pharmacology_profile=profile,
+                    applied_concentration_um=5.0, duration_hours=24.0, seed=seed,
+                )["deltas"]["tumor_growth_inhibition_pct"])
+            return values
+
+        print("UNCERTAINTY", record.compound_id, flush=True)
+        band = propagate_potency_uncertainty(run_tissue, float(point), float(quantile),
+                                             points=5)
+        band["applicable"] = True
+        return band
+
     def evaluate(query, label, candidate=None):
         record = engine._resolve_compound_rec(query)
         mol = Chem.MolFromSmiles(record.canonical_smiles)
@@ -268,6 +316,8 @@ def main():
                 "tgi_max_pct": max(tgi),
                 "resistant_fraction_mean": float(np.mean(resistant)),
             },
+            "medchem": medchem_assess(record.canonical_smiles).to_dict(),
+            "potency_uncertainty": uncertainty_band(record, info),
         }
 
     # Controls first, so the candidate arms can be tested against the negative control
@@ -371,11 +421,36 @@ def main():
     report["candidates_separating_bonferroni"] = corrected
 
     total = len(report["candidates"])
+
+    # A separation at the point estimate means little if the potency interval
+    # admits no effect at all. Where every band spans zero, saying the candidates
+    # separated would report the precision of the simulation as if it were
+    # knowledge about the compounds.
+    bands = [c.get("potency_uncertainty") or {} for c in report["candidates"]]
+    applicable = [b for b in bands if b.get("applicable")]
+    all_bands_span_zero = bool(applicable) and all(
+        b.get("band_spans_zero") for b in applicable)
+    report["uncertainty_summary"] = {
+        "bands_computed": len(applicable),
+        "bands_spanning_zero": sum(1 for b in applicable if b.get("band_spans_zero")),
+        "note": (
+            "Each band is the range of tissue responses consistent with the potency "
+            "model's 95% conformal interval. A band spanning zero means the simulation "
+            "does not establish that the compound does anything."
+        ),
+    }
+
     control_fails_too = (
         modelled_arm.get("versus_negative_control", {}).get("separates_from_negative_control")
         is False
     )
-    if not separated and control_fails_too:
+    if separated and all_bands_span_zero:
+        report["headline"] = (
+            f"{len(separated)} of {total} candidates separated from the negative "
+            f"control at their point estimates, and every one of their potency "
+            f"intervals also admits no effect at all."
+        )
+    elif not separated and control_fails_too:
         # Reporting the bare count would read as a verdict on the molecules. It is not
         # one while the positive control fails the same test under the same scoring.
         report["headline"] = (
