@@ -255,6 +255,47 @@ def test_written_columns_cover_what_the_importer_needs():
     assert needed.issubset(set(fetcher.CSV_COLUMNS))
 
 
+def test_fragmentation_counts_the_protocols_being_pooled():
+    """One endpoint and one cell line is not one assay, and that is the number
+    that decides whether a fetch is usable.
+
+    Measured on ChEMBL_37, "IC50 | PANC-1" is 355 assays from 325 papers, median
+    three records. Pooling them produced a model worse than the 43 compound
+    curated one on four of five seeds, on an identical holdout.
+    """
+    rows = (
+        [{"assay_chembl_id": "A1", "document_chembl_id": "D1"}] * 60
+        + [{"assay_chembl_id": "A2", "document_chembl_id": "D2"}] * 3
+        + [{"assay_chembl_id": f"A{i}", "document_chembl_id": f"D{i}"}
+           for i in range(3, 40)]
+    )
+    report = fetcher.assay_fragmentation(rows)
+
+    assert report["distinct_assays"] == 39
+    assert report["distinct_documents"] == 39
+    assert report["largest_assay_records"] == 60
+    assert report["median_assay_records"] == 1
+    assert report["assays_with_40_or_more"] == 1
+    assert 0.0 < report["largest_assay_share_pct"] < 100.0
+
+
+def test_fragmentation_handles_an_empty_fetch():
+    report = fetcher.assay_fragmentation([])
+
+    assert report["distinct_assays"] == 0
+    assert report["largest_assay_records"] == 0
+    assert report["largest_assay_share_pct"] == 0.0
+
+
+def test_a_single_protocol_fetch_is_not_flagged():
+    """The warning must not fire on data that is genuinely one assay."""
+    rows = [{"assay_chembl_id": "A1", "document_chembl_id": "D1"}] * 50
+    report = fetcher.assay_fragmentation(rows)
+
+    assert report["distinct_assays"] == 1
+    assert report["largest_assay_share_pct"] == 100.0
+
+
 def test_only_units_the_importer_converts_exactly_are_requested():
     from ai.predictors.bioactivity_import import to_micromolar
 

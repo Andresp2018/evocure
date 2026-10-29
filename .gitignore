@@ -55,6 +55,7 @@ reports/*
 !reports/tissue_transfer_function.json
 !reports/generator_benchmark.json
 !reports/chemical_diversity_measurement.json
+!reports/dataset_expansion_comparison.json
 
 # Godot editor state
 godot_frontend/.godot/

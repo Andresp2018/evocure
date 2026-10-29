@@ -28,9 +28,25 @@ size. See [ROADMAP.md](ROADMAP.md).
 | PubChem BioAssay | Cytotoxicity assays | https://pubchem.ncbi.nlm.nih.gov/ | Useful as a complement. |
 | CCLE / DepMap | Some drug sensitivity data | https://depmap.org/ | More focused on CRISPR and expression, but has drug data. |
 
-**Practical recommendation.** Start with ChEMBL and GDSC, filtered to PANC-1 and
-MIA PaCa-2 only, the two most used lines. The goal is hundreds of compounds with
-diverse scaffolds, not more gemcitabine analogues.
+**Practical recommendation, revised after measuring it.** Start with **GDSC**, or any
+single published panel run under one protocol. Not ChEMBL.
+
+ChEMBL has the volume: 2070 unique PANC-1 IC50 compounds over 900 Murcko
+scaffolds, against the curated set's 32. It does not have the homogeneity. On
+ChEMBL_37 those records come from **355 distinct assays in 325 distinct papers,
+median three records each, largest 70**, so importing them pools 355 protocols
+into one training target. Measured consequence: scored on an identical scaffold
+holdout, a model trained on the pooled 2106 records was worse than the 43
+compound curated model on four of five draws. The trainer's own metrics looked
+better only because they were computed on a lower variance population. See
+[ROADMAP.md](ROADMAP.md) for the full numbers and
+`python scripts/measure_dataset_expansion.py` to reproduce them.
+
+So the goal is not hundreds of compounds with diverse scaffolds. It is hundreds
+of compounds **measured the same way**, and the two are not the same target.
+ChEMBL remains useful as a source for a single large panel imported on its own,
+and `scripts/fetch_chembl_bioactivity.py` reports the protocol count so you can
+see what you are about to pool.
 
 That last point is not a stylistic preference. The published 100 generation run
 produced five candidates that are all gemcitabine analogues at Tanimoto 0.62 to

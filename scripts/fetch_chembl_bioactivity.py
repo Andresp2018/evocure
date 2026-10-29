@@ -49,6 +49,7 @@ Examples:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 import argparse
 import csv
 import json
@@ -245,6 +246,47 @@ def fetch_activities(http: httpx.Client, target_id: str, endpoint: str,
     return rows, counts
 
 
+def assay_fragmentation(rows: list[dict]) -> dict[str, Any]:
+    """How many separate protocols a fetch actually pools together.
+
+    This is the number that decides whether a fetch is usable, and it is not
+    visible from the row count. "IC50 | PANC-1" is one assay comparability group
+    to scripts/import_bioactivity.py, which groups on endpoint, cell line and
+    organism. Measured on ChEMBL_37 it is 355 distinct assays from 325 distinct
+    papers, median three records each, largest 70. Importing it pools 355
+    protocols with different incubation times, readouts and conventions into one
+    training target, which is the exact failure the importer exists to prevent
+    and which its key cannot see.
+
+    The consequences were measured, see reports/dataset_expansion_comparison.json:
+    scored on an identical scaffold holdout, the model trained on 2106 pooled
+    records was worse than the 43 compound curated model on four of five seeds.
+    The trainer's own metrics looked better only because they were computed on a
+    different, lower variance population.
+
+    So read a high distinct_assays with a low largest_assay_records as a warning,
+    not as a large dataset.
+    """
+    from collections import Counter
+
+    assays = Counter(str(r.get("assay_chembl_id") or "") for r in rows)
+    documents = Counter(str(r.get("document_chembl_id") or "") for r in rows)
+    assay_sizes = sorted(assays.values(), reverse=True)
+    doc_sizes = sorted(documents.values(), reverse=True)
+
+    return {
+        "distinct_assays": len(assays),
+        "distinct_documents": len(documents),
+        "largest_assay_records": assay_sizes[0] if assay_sizes else 0,
+        "median_assay_records": (assay_sizes[len(assay_sizes) // 2]
+                                 if assay_sizes else 0),
+        "assays_with_40_or_more": sum(1 for s in assay_sizes if s >= 40),
+        "largest_document_records": doc_sizes[0] if doc_sizes else 0,
+        "largest_assay_share_pct": (round(100.0 * assay_sizes[0] / len(rows), 1)
+                                    if rows and assay_sizes else 0.0),
+    }
+
+
 def scaffold_report(rows: list[dict]) -> dict[str, int]:
     """Scaffolds, not compounds, are the sample size a scaffold split sees.
 
@@ -352,6 +394,7 @@ def main() -> int:
         writer.writerows(rows)
 
     summary = scaffold_report(rows)
+    fragmentation = assay_fragmentation(rows)
     provenance = {
         "source": "ChEMBL REST API",
         "api_base": API,
@@ -367,6 +410,7 @@ def main() -> int:
         "records_written": len(rows),
         "dropped": {k: v for k, v in counts.items() if k != "seen"},
         "dataset_shape": summary,
+        "assay_fragmentation": fragmentation,
         "licence": "ChEMBL data is CC BY-SA 3.0. Check the terms before redistributing.",
         "caveat": (
             "A fetch is not a dataset. These rows still have to pass the assay "
@@ -387,6 +431,26 @@ def main() -> int:
     for reason, count in provenance["dropped"].items():
         if count:
             print(f"    {reason:24s} {count}")
+
+    print(f"\n  distinct assays         : {fragmentation['distinct_assays']}")
+    print(f"  distinct papers         : {fragmentation['distinct_documents']}")
+    print(f"  largest single assay    : {fragmentation['largest_assay_records']} records "
+          f"({fragmentation['largest_assay_share_pct']}% of the file)")
+    print(f"  median assay size       : {fragmentation['median_assay_records']} records")
+
+    if fragmentation["distinct_assays"] > 20 and fragmentation["largest_assay_share_pct"] < 25:
+        print("\n  READ THIS BEFORE IMPORTING. One endpoint and one cell line is not one")
+        print(f"  assay. This file pools {fragmentation['distinct_assays']} protocols from "
+              f"{fragmentation['distinct_documents']} papers, with different")
+        print("  incubation times, readouts and conventions. The importer's comparability")
+        print("  key groups on endpoint, cell line and organism, so it cannot see this.")
+        print("  Measured consequence on exactly this data: a model trained on the pooled")
+        print("  set was worse than the 43 compound curated model on four of five seeds,")
+        print("  scored on an identical scaffold holdout. The trainer's own metrics looked")
+        print("  better only because they were computed on a lower variance population.")
+        print("  Reproduce with scripts/measure_dataset_expansion.py, and check whether a")
+        print("  single protocol gives you enough: the largest here is "
+              f"{fragmentation['largest_assay_records']} records.")
 
     print("\n  Scaffolds, not rows, are the sample size a scaffold split sees.")
     print("  The curated set has 32. Next:")

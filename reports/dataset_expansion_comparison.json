@@ -1,0 +1,126 @@
+{
+  "question": "Does training on the imported set beat the curated set, measured on one identical scaffold holdout?",
+  "curated_dataset": "data/reference/pdac_reference_dataset.json",
+  "expanded_dataset": "/home/user/evocure/data/processed/pdac_expanded_dataset.json",
+  "curated_compounds": 43,
+  "curated_scaffolds": 32,
+  "curated_target_variance": 5.9573,
+  "expanded_compounds": 2106,
+  "expanded_scaffolds": 919,
+  "expanded_target_variance": 1.1595,
+  "holdout_fraction": 0.3,
+  "trials": [
+    {
+      "seed": 0,
+      "held_out_scaffolds": 10,
+      "test_compounds": 18,
+      "curated": {
+        "train_compounds": 25,
+        "test_compounds": 18,
+        "rmse": 1.1129567034405845,
+        "mae": 1.05452,
+        "conformal_q95": 1.5995599999999999
+      },
+      "expanded": {
+        "train_compounds": 2076,
+        "test_compounds": 18,
+        "rmse": 1.925959025363318,
+        "mae": 1.7056331805555562,
+        "conformal_q95": 2.9920489999999997
+      },
+      "rmse_delta": 0.813,
+      "q95_delta": 1.3925
+    },
+    {
+      "seed": 1,
+      "held_out_scaffolds": 10,
+      "test_compounds": 19,
+      "curated": {
+        "train_compounds": 24,
+        "test_compounds": 19,
+        "rmse": 1.4675416762772113,
+        "mae": 1.1865568421052632,
+        "conformal_q95": 3.923760000000002
+      },
+      "expanded": {
+        "train_compounds": 2070,
+        "test_compounds": 19,
+        "rmse": 1.6661078487904042,
+        "mae": 1.44747364924812,
+        "conformal_q95": 2.5814930000000005
+      },
+      "rmse_delta": 0.1986,
+      "q95_delta": -1.3423
+    },
+    {
+      "seed": 2,
+      "held_out_scaffolds": 10,
+      "test_compounds": 11,
+      "curated": {
+        "train_compounds": 32,
+        "test_compounds": 11,
+        "rmse": 1.5079241203238791,
+        "mae": 0.9275872727272727,
+        "conformal_q95": 4.2218399999999985
+      },
+      "expanded": {
+        "train_compounds": 2077,
+        "test_compounds": 11,
+        "rmse": 1.8402073698836974,
+        "mae": 1.5024348083333339,
+        "conformal_q95": 4.055062874999999
+      },
+      "rmse_delta": 0.3323,
+      "q95_delta": -0.1668
+    },
+    {
+      "seed": 3,
+      "held_out_scaffolds": 10,
+      "test_compounds": 12,
+      "curated": {
+        "train_compounds": 31,
+        "test_compounds": 12,
+        "rmse": 1.6604900870701798,
+        "mae": 1.2210508333333339,
+        "conformal_q95": 3.89422
+      },
+      "expanded": {
+        "train_compounds": 2089,
+        "test_compounds": 12,
+        "rmse": 1.2386656564161092,
+        "mae": 0.9779213287698408,
+        "conformal_q95": 2.4299770000000005
+      },
+      "rmse_delta": -0.4218,
+      "q95_delta": -1.4642
+    },
+    {
+      "seed": 4,
+      "held_out_scaffolds": 10,
+      "test_compounds": 10,
+      "curated": {
+        "train_compounds": 33,
+        "test_compounds": 10,
+        "rmse": 0.9793404151519532,
+        "mae": 0.7091670000000003,
+        "conformal_q95": 2.175020000000001
+      },
+      "expanded": {
+        "train_compounds": 2095,
+        "test_compounds": 10,
+        "rmse": 1.2089988140190777,
+        "mae": 1.0595683400000002,
+        "conformal_q95": 1.8309743333333337
+      },
+      "rmse_delta": 0.2297,
+      "q95_delta": -0.344
+    }
+  ],
+  "rmse_delta_mean": 0.2304,
+  "q95_delta_mean": -0.385,
+  "seeds_improved": 1,
+  "seeds_total": 5,
+  "verdict": "Better on only 1 of 5 seeds and worse on average. The expansion does not establish an improvement here.",
+  "why_the_trainer_metrics_are_not_comparable": "train_qsar.py reports R2 and ROC AUC on whichever dataset it trained on. R2 = 1 - MSE / target variance, and the curated set was built to span potency (variance 5.96) while the ChEMBL set concentrates (variance 1.16), so R2 falls on the wider set even as absolute error improves. The active label, IC50 below 10 uM, likewise cuts the curated bimodal distribution cleanly and lands inside the bulk of the ChEMBL one, which is why ROC AUC falls. Neither is evidence about model quality across the two runs.",
+  "caveat": "The test rows are curated compounds, so this measures transfer onto curated chemistry, not onto arbitrary screening libraries. The holdouts are small, which is the original data limitation restated, so per seed results are reported rather than a single figure."
+}

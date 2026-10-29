@@ -286,23 +286,53 @@ falling from 2.04 to 1.04 as training scaffolds rise from 8 to 27, and still des
 steeply at the current size. The estimator is data limited, not architecture limited.
 Reproduce it with `python scripts/investigate_potency_estimator.py`.
 
-**What would help.**
-- An assay-homogeneous PDAC cytotoxicity set substantially larger than 43 compounds.
-  PANC-1 and MIA PaCa-2 IC50 values from ChEMBL and GDSC are the obvious source. Order of
-  magnitude extrapolation suggests 200 scaffolds would bring the conformal interval from
-  a factor of 1300 to something near 30, which is the difference between ranking
-  compounds and saying something about them.
+**This has been tried, and ChEMBL does not supply it.** The obvious plan was to pull
+PANC-1 and MIA PaCa-2 IC50 values from ChEMBL. The tooling for that now runs end to end,
+and the result is negative. Recorded here so nobody spends the effort twice.
+
+ChEMBL_37 yields 2070 unique PANC-1 IC50 compounds over 900 Murcko scaffolds, which looks
+like the 200 scaffolds this section used to ask for, nearly five times over. Retraining on
+it reports RMSE 1.34 to 0.85 and the conformal quantile 3.12 to 1.78 log units, a factor
+of 1330 down to a factor of 60.
+
+None of that is an improvement. Those numbers are computed on different populations: the
+curated set was built to span potency (pIC50 variance 5.96), the ChEMBL set concentrates
+(variance 1.16), and since R2 = 1 - MSE/variance the smaller denominator alone reproduces
+the reported R2 of both models. Scored properly, both trained with the held-out scaffolds
+removed and both tested on the same curated compounds, the 2106 compound model was **worse
+on four of five holdout draws**, RMSE +0.23 log units on average.
+
+The reason is that "IC50 | PANC-1" is not one assay. It is **355 distinct assays from 325
+distinct papers, median three records each, largest 70**, and only four with 40 or more.
+The importer groups on endpoint, cell line and organism, so it cannot see that it is
+pooling 355 protocols; the 26 duplicate disagreements it did report, up to 203 fold on the
+same compound, are that heterogeneity measured directly. More compounds from more papers
+is not more data for this purpose. Reproduce with
+`python scripts/measure_dataset_expansion.py`.
+
+**What would help, given that.**
+- **GDSC**, or any single large panel run under one protocol. One protocol across a few
+  hundred compounds beats thousands across hundreds of protocols, and this is now the
+  first recommendation rather than one of four.
+- **Hierarchical or multi-task modelling** that treats each assay as its own task over a
+  shared representation instead of pooling them into one target. That is the only route
+  that makes the 952 available scaffolds usable, and it is a modelling change rather than
+  a data one.
 - Calibration of the tissue model against published spheroid or organoid dose response
   data, so that simulated growth inhibition means something outside this software.
 - Propagation of QSAR uncertainty through the tissue simulation. At present a point IC50
   enters the simulation and the interval is dropped, which flatters the output.
 
 **Done looks like.** A fitted model with its validation protocol, a dataset with
-provenance per record, and a statement of what the conformal interval became.
+provenance per record, and a statement of what the conformal interval became **measured on
+a test set the previous model was also scored on**. The last clause is the part this
+project got wrong first time.
 
-[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) lists the sources and the exact import
-commands. `scripts/import_bioactivity.py` enforces assay homogeneity so a bulk
-download cannot quietly pool incomparable measurements into one training target.
+[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) lists the sources and the exact commands.
+`scripts/fetch_chembl_bioactivity.py` obtains the data and reports how many protocols a
+fetch pools before you import it; `scripts/import_bioactivity.py` gates assay
+comparability on endpoint and cell line, which this exercise showed is necessary and not
+sufficient.
 
 ### Challenge 2. Improve molecular generation and evolutionary optimisation
 
