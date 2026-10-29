@@ -21,6 +21,7 @@ Implements the complete 15-stage workflow integrating:
 
 from __future__ import annotations
 
+import logging
 import math
 import uuid
 from typing import Any, Callable
@@ -33,6 +34,7 @@ from ai.predictors import CalibratedQSARPredictor
 from simulation.biology.diseases.pdac import PDACModule
 from simulation.biology.registry import DiseaseRegistry
 from simulation.chemistry.engine import ChemistryEngine
+from simulation.core.paths import is_resolved_root, project_root
 from simulation.core.contracts import (
     CompoundRecord,
     EpistemicCategory,
@@ -46,6 +48,8 @@ from simulation.pharmacology.admet import (
     validate_for_biomedical_mode,
 )
 from simulation.toxicity.models import ToxicologyEngine
+
+logger = logging.getLogger(__name__)
 
 NON_CLINICAL_DISCLAIMER: str = (
     "DISCLAIMER: In silico computational simulation for research and exploratory ranking only. "
@@ -102,14 +106,41 @@ class CandidateDiscoveryPipeline:
         self.disease_registry = disease_registry or DiseaseRegistry()
         self.molecular_optimizer = molecular_optimizer or DirectedMolecularOptimizer()
 
-        # Initialize or load QSAR model
+        # Initialize or load QSAR model. A failure here used to be swallowed, which
+        # left an unfitted predictor in place: every candidate then came back with
+        # predicted_pdac_activity 0.0, no IC50 and therefore no tissue simulation,
+        # while the run still described itself as a PDAC potency screen. The reason
+        # is kept so run() can say so in its own output instead of reporting zeros.
+        self.qsar_unavailable_reason: str | None = None
         if qsar_predictor is not None:
             self.qsar_predictor = qsar_predictor
         else:
             try:
                 self.qsar_predictor = CalibratedQSARPredictor().load()
-            except Exception:
+            except Exception as exc:
                 self.qsar_predictor = CalibratedQSARPredictor()
+                self.qsar_unavailable_reason = (
+                    f"{type(exc).__name__}: {exc}. "
+                    f"Train it with 'python scripts/train_qsar.py'. "
+                    f"Project root resolved to {project_root()}"
+                    + ("" if is_resolved_root() else
+                       " (which does not carry configs/ and data/reference, so the "
+                       "root itself was not found; set EVOCURE_HOME)")
+                    + "."
+                )
+        if not getattr(self.qsar_predictor, "is_fitted", False) and self.qsar_unavailable_reason is None:
+            self.qsar_unavailable_reason = "The supplied QSAR predictor is not fitted."
+        if self.qsar_unavailable_reason:
+            logger.warning(
+                "No fitted QSAR model: this run cannot rank on predicted potency and "
+                "will not simulate any candidate in the tissue model. %s",
+                self.qsar_unavailable_reason,
+            )
+
+    @property
+    def potency_model_available(self) -> bool:
+        """Whether this pipeline can predict activity for a novel structure."""
+        return self.qsar_unavailable_reason is None
 
     def run(
         self,
@@ -125,10 +156,26 @@ class CandidateDiscoveryPipeline:
         candidate_count: int = 5,
         tissue_in_fitness: bool = False,
         medchem_filters: bool = False,
+        chemical_diversity_weight: float = 0.0,
     ) -> dict[str, Any]:
         """
         Execute the full 15-stage iterative discovery pipeline across the specified
         number of evolutionary generations.
+
+        chemical_diversity_weight changes how an over-full Pareto front is cut down.
+        At 0.0, the default, the cut is NSGA-II's own crowding distance, measured in
+        objective space, which treats two molecules that score alike as
+        interchangeable however different they are chemically. Above 0.0 the
+        tie-break blends that crowding with Tanimoto distance to the structures
+        already kept. 0.5 weights the two equally.
+
+        It was built to widen the chemistry and, measured, it does not: over three
+        seeds it moved mean pairwise Tanimoto distance by -0.012 and scaffold count
+        by -0.3, both inside seed noise, with the front overflowing every
+        generation so the tie-break was certainly firing. See
+        scripts/measure_chemical_diversity.py and
+        DirectedMolecularOptimizer.diverse_truncation. It stays off by default and
+        is not a fix for the structural convergence in the candidate review.
 
         tissue_in_fitness closes the selection loop. When False (the default) selection
         uses the five chemistry and prediction objectives only, and the microenvironment
@@ -764,10 +811,22 @@ class CandidateDiscoveryPipeline:
                         new_pop_smiles.append(evaluated_candidates[f_idx]["canonical_smiles"])
                 else:
                     needed = population_size - len(new_pop_smiles)
-                    # Use crowding distance to break ties
-                    cd = self.molecular_optimizer.crowding_distance(obj_matrix, front)
-                    sorted_front = sorted(front, key=lambda idx: (evaluated_candidates[idx].get("composite_utility", 0.0), cd.get(idx, 0.0)) if objective_weights else (cd.get(idx, 0.0), 0.0), reverse=True)
-                    for f_idx in sorted_front[:needed]:
+                    if chemical_diversity_weight > 0.0:
+                        # Break ties on chemistry as well as on objective space,
+                        # so a front of lookalikes does not crowd the population
+                        # down to one scaffold.
+                        kept = self.molecular_optimizer.diverse_truncation(
+                            obj_matrix, list(front), needed,
+                            {idx: evaluated_candidates[idx]["canonical_smiles"]
+                             for idx in front},
+                            chemical_weight=chemical_diversity_weight,
+                        )
+                    else:
+                        # Use crowding distance to break ties
+                        cd = self.molecular_optimizer.crowding_distance(obj_matrix, front)
+                        sorted_front = sorted(front, key=lambda idx: (evaluated_candidates[idx].get("composite_utility", 0.0), cd.get(idx, 0.0)) if objective_weights else (cd.get(idx, 0.0), 0.0), reverse=True)
+                        kept = sorted_front[:needed]
+                    for f_idx in kept:
                         new_pop_smiles.append(evaluated_candidates[f_idx]["canonical_smiles"])
                     break
 
@@ -844,6 +903,9 @@ class CandidateDiscoveryPipeline:
             "objective_keys": objective_keys,
             "tissue_in_fitness": tissue_in_fitness,
             "medchem_filters": medchem_filters,
+            "chemical_diversity_weight": chemical_diversity_weight,
+            "population_diversity": self.molecular_optimizer.calculate_diversity(
+                current_smiles_pop),
             "selection_basis": (
                 "Six objectives including simulated tumour growth inhibition; the "
                 "microenvironment model exerts selective pressure on the population."
@@ -852,7 +914,20 @@ class CandidateDiscoveryPipeline:
                 "is a readout for the top ranked candidates and does not affect selection."
             ),
             "disease_id": self.disease_id,
-            "activity_scope": "Exploratory PDAC surrogate; not clinically validated" if self.disease_id == "PDAC" else "Chemistry-only ranking. No activity or novel-compound cellular response is available for this disease.",
+            "potency_model_available": self.potency_model_available,
+            "potency_model_unavailable_reason": self.qsar_unavailable_reason,
+            "activity_scope": (
+                "Exploratory PDAC surrogate; not clinically validated"
+                if self.disease_id == "PDAC" and self.potency_model_available else
+                # Without a fitted predictor this is a chemistry ranking that happens
+                # to be labelled PDAC, so it must not claim an activity scope it has
+                # no model for.
+                "Chemistry-only ranking. No fitted activity predictor was available, "
+                "so predicted_pdac_activity is zero for every candidate and no "
+                "candidate was simulated in the tissue model."
+                if self.disease_id == "PDAC" else
+                "Chemistry-only ranking. No activity or novel-compound cellular response is available for this disease."
+            ),
             "pipeline_version": "1.1.0",
             "simulator_version": "1.0.0",
             "generations_completed": generations,

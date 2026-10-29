@@ -52,6 +52,7 @@ from app.schemas.models import (
     UniverseModeRequest,
 )
 from app.services.session_manager import get_session_manager
+from simulation.core.paths import configs_dir
 
 logger = logging.getLogger("evocure.api")
 
@@ -110,8 +111,7 @@ async def get_compound_library() -> list[dict[str, Any]]:
 @api_router.get("/missions-glossary")
 async def get_missions_glossary() -> dict[str, Any]:
     sm = get_session_manager()
-    base_dir = pathlib.Path(__file__).resolve().parent.parent.parent
-    mg_path = base_dir / "configs" / "missions_and_glossary.json"
+    mg_path = configs_dir() / "missions_and_glossary.json"
     if mg_path.exists():
         try:
             with open(mg_path, "r", encoding="utf-8") as f:
@@ -471,8 +471,7 @@ async def run_discovery_pipeline(req: DiscoveryRunRequest) -> GenericResponse:
 @api_router.post("/discovery/evocure-001", response_model=GenericResponse)
 async def run_evocure_001_benchmark() -> GenericResponse:
     sm = get_session_manager()
-    base_dir = pathlib.Path(__file__).resolve().parent.parent.parent
-    bench_path = base_dir / "configs" / "evocure_001.json"
+    bench_path = configs_dir() / "evocure_001.json"
     bench_config = {}
     if bench_path.exists():
         with open(bench_path, "r", encoding="utf-8") as f:

@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Union
 import psutil
 
 from simulation.core.contracts import EpistemicCategory
+from simulation.core.paths import project_root
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class ModelRegistry:
 
     def _register_default_models(self) -> None:
         """Register default EVOCURE scientific models."""
-        base_dir = Path(__file__).resolve().parents[2]
+        base_dir = project_root()
 
         # 1. PDAC Calibrated QSAR
         qsar_path = base_dir / "models" / "scientific" / "pdac_qsar_v1.joblib"

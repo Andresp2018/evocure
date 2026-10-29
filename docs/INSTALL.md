@@ -240,7 +240,41 @@ See [models/README.md](../models/README.md).
 | `EVOCURE_COMPUTE` | `auto` | `auto`, `cpu`, `cuda`, `rocm`, `directml`, `xpu`, `mps` |
 | `EVOCURE_FRONTEND` | `godot` | `godot`, `web`, `both`, `none` |
 | `EVOCURE_DISABLE_LAYA_NEURAL` | unset | `1` forces deterministic triage |
-| `EVOCURE_MAX_ENTITIES` | `4000` | Particle ceiling |
+| `EVOCURE_AI_PROVIDER` | `auto_local` | `auto_local`, `local_gemma`, `gemini`, `openai`, `deterministic` |
+| `EVOCURE_GODOT_BIN` | unset | Godot binary, if it is not on `PATH` |
+| `EVOCURE_MODEL_MIRROR` | unset | Base URL for `scripts/fetch_models.py` |
+| `EVOCURE_HOME` | autodetected | Directory holding `configs/`, `data/`, `models/` |
+| `EVOCURE_DATA_HOME` | the project root | Where checkpoints, databases and reports are written |
+
+That is the whole list. Earlier releases documented `EVOCURE_MAX_ENTITIES` and
+`.env.example` carried eighteen more, including `EVOCURE_MODELS_DIR` and
+`EVOCURE_MEMORY_LIMIT_MB`, that no code reads. Setting one had no effect and
+reported nothing. They have been removed rather than left as configuration that
+looks available. Check any variable yourself with
+`grep -rn EVOCURE_THE_NAME --include=*.py .`
+
+### When you need `EVOCURE_HOME`
+
+EVOCURE finds its own data by looking for `configs/default_universe.json` and
+`data/reference/` on an ancestor of the installed package, then on the working
+directory. Following the steps above, a `.venv` inside the checkout, that works
+with nothing set.
+
+Set `EVOCURE_HOME` when neither holds: a virtual environment outside the
+checkout, a system wide install, or importing `evocure` as a library from an
+unrelated directory. Without it the QSAR model cannot be found, and a discovery
+run then reports `potency_model_available: false` with `predicted_pdac_activity`
+zero for every candidate rather than silently ranking on chemistry alone.
+
+Check what was resolved:
+
+```bash
+python -m simulation.core.paths
+```
+
+`EVOCURE_DATA_HOME` matters only when the project root is read only, which a
+system wide install usually is. Writes then go to `$XDG_STATE_HOME/evocure`
+instead of failing.
 
 `.env` is gitignored. Keep API keys out of version control; the optional cloud providers
 are off by default and EVOCURE is designed to run fully offline.

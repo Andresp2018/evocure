@@ -33,7 +33,7 @@ Examples:
   # Import one assay group, writing a new dataset next to the curated one
   python scripts/import_bioactivity.py data/raw/chembl_panc1.csv \\
       --endpoint IC50 --cell-line PANC-1 --disease PDAC \\
-      --output data/reference/pdac_expanded_dataset.json
+      --output data/processed/pdac_expanded_dataset.json
 
   # Then retrain and see whether the conformal interval narrowed
   python scripts/train_qsar.py
@@ -194,7 +194,9 @@ def main() -> int:
     }, indent=2), encoding="utf-8")
 
     print(f"\n  Written to {destination}")
-    print("  Retrain with: python scripts/train_qsar.py")
+    # --dataset matters: without it train_qsar.py loads the curated file and this
+    # import is written and never read, which is what the instruction used to say.
+    print(f"  Retrain with: python scripts/train_qsar.py --dataset {destination}")
     print("  The training script prints the conformal interval, which is the number to watch.")
     return 0
 

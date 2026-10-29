@@ -1,6 +1,6 @@
 """A durable record of every structure a search evaluated, not a candidate library.
 
-A 100 generation run evaluates around two thousand structures and reports five.
+A 20 generation run evaluates hundreds of structures and reports five.
 The other 2084 currently exist only in memory for the length of a session and
 inside a JSON blob afterwards, so they cannot be queried, compared or reused.
 
@@ -33,8 +33,9 @@ from typing import Any, Iterable
 
 import json
 import sqlite3
+from simulation.core.paths import writable_root
 
-DEFAULT_DB_PATH: Path = Path(__file__).resolve().parents[2] / "experiments" / "evocure.sqlite3"
+DEFAULT_DB_PATH: Path = writable_root() / "experiments" / "evocure.sqlite3"
 
 RECORD_TYPE: str = "search_trace"
 

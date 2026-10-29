@@ -12,6 +12,7 @@ from rdkit.Chem import rdDepictor
 from simulation.chemistry.engine import ChemistryEngine
 from simulation.chemistry.library import COMPOUND_LIBRARY
 from simulation.core.contracts import InterfaceMode
+from simulation.core.paths import reference_data_dir
 
 
 @lru_cache(maxsize=2048)
@@ -176,7 +177,7 @@ def local_structure_corpus():
         add(entry.get("name", "unnamed"), entry.get("smiles"),
             "EVOCURE compound library", entry.get("category", ""))
 
-    dataset = Path(__file__).resolve().parents[2] / "data" / "reference" / "pdac_reference_dataset.json"
+    dataset = reference_data_dir() / "pdac_reference_dataset.json"
     if dataset.is_file():
         payload = json.loads(dataset.read_text(encoding="utf-8"))
         for entry in payload.get("compounds", []):

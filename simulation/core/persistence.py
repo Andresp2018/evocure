@@ -28,6 +28,7 @@ from fpdf import FPDF
 from fpdf.fonts import FontFace
 
 from simulation.chemistry.engine import ChemistryEngine
+from simulation.core.paths import writable_root
 from simulation.core.contracts import (
     CompoundRecord,
     EpistemicCategory,
@@ -43,7 +44,7 @@ NON_CLINICAL_DISCLAIMER: str = (
     "or human dosing recommendations."
 )
 
-DEFAULT_DB_PATH: Path = Path(__file__).resolve().parents[2] / "experiments" / "evocure.sqlite3"
+DEFAULT_DB_PATH: Path = writable_root() / "experiments" / "evocure.sqlite3"
 
 
 def sanitize_pdf_text(text: Any) -> str:

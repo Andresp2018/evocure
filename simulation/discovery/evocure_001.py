@@ -36,9 +36,10 @@ from simulation.core.engine import EVOCUREEngine
 from simulation.core.persistence import SafeSimulationJSONEncoder
 from simulation.discovery.pipeline import CandidateDiscoveryPipeline
 from simulation.pharmacology.admet import PharmacologyEngine
+from simulation.core.paths import configs_dir, writable_root
 
-CONFIG_PATH: Path = Path(__file__).resolve().parents[2] / "configs" / "evocure_001.json"
-DEFAULT_REPORTS_DIR: Path = Path(__file__).resolve().parents[2] / "reports"
+CONFIG_PATH: Path = configs_dir() / "evocure_001.json"
+DEFAULT_REPORTS_DIR: Path = writable_root() / "reports"
 
 NON_CLINICAL_DISCLAIMER: str = (
     "DISCLAIMER: In silico computational simulation for research and exploratory ranking only. "

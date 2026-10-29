@@ -58,6 +58,7 @@ from simulation.systemic.pbpk import SystemicPBPKEngine
 from simulation.systemic.biomarkers import BiologicalIndicatorsEngine
 from ai.laya.decision_engine import LayaDecisionEngine
 from ai.local_llm.gemma_assistant import LocalGemmaAssistant
+from simulation.core.paths import configs_dir, models_dir, project_root, writable_root
 from ai.orchestration.registry import get_ai_registry
 
 logger = logging.getLogger("evocure.session")
@@ -85,11 +86,13 @@ class InternalEVOCUREEngine:
         self.start_wall_time = time.time()
 
         # Load configs
-        self.base_dir = pathlib.Path(__file__).resolve().parent.parent.parent
-        self.configs_dir = self.base_dir / "configs"
+        self.base_dir = project_root()
+        self.configs_dir = configs_dir()
         self.data_dir = self.base_dir / "data"
-        self.checkpoints_dir = self.base_dir / "checkpoints"
-        self.experiments_dir = self.base_dir / "experiments"
+        # Checkpoints and experiment databases are written, so they follow the
+        # writable root rather than the package location.
+        self.checkpoints_dir = writable_root() / "checkpoints"
+        self.experiments_dir = writable_root() / "experiments"
         self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
         self.experiments_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1814,11 +1817,11 @@ class SessionManager:
 
         reg = get_ai_registry()
         hw = reg.get_hardware_telemetry() if hasattr(reg, "get_hardware_telemetry") else {}
-        base_dir = pathlib.Path(__file__).resolve().parent.parent.parent
-        gemma_path = base_dir / "models" / "gemma" / "Gemma-4-E2B-Heretic-Q4_K_M.gguf"
-        gemma_runtime = base_dir / "models" / "gemma" / "llama_runtime" / "llama.exe"
-        laya_path = base_dir / "models" / "laya" / "multilingual" / "model.safetensors"
-        qsar_path = base_dir / "models" / "scientific" / "pdac_qsar_v1.joblib"
+        base_dir = models_dir()
+        gemma_path = base_dir / "gemma" / "Gemma-4-E2B-Heretic-Q4_K_M.gguf"
+        gemma_runtime = base_dir / "gemma" / "llama_runtime" / "llama.exe"
+        laya_path = base_dir / "laya" / "multilingual" / "model.safetensors"
+        qsar_path = base_dir / "scientific" / "pdac_qsar_v1.joblib"
 
         assistant = getattr(self.engine, "assistant", getattr(self.engine, "gemma", None))
         is_server = assistant.is_local_server_running() if assistant and hasattr(assistant, "is_local_server_running") else False

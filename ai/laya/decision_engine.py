@@ -22,6 +22,7 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 os.environ.setdefault("TORCHDYNAMO_DISABLE", "1")
 
+from simulation.core.paths import models_dir as evocure_models_dir
 from simulation.core.contracts import CompoundRecord, EpistemicCategory
 
 logger = logging.getLogger(__name__)
@@ -98,9 +99,7 @@ class LayaDecisionEngine:
 
     def __init__(self, models_dir: Optional[Union[str, Path]] = None) -> None:
         if models_dir is None:
-            self.models_dir = (
-                Path(__file__).resolve().parents[2] / "models" / "laya" / "multilingual"
-            )
+            self.models_dir = evocure_models_dir() / "laya" / "multilingual"
         else:
             self.models_dir = Path(models_dir)
 

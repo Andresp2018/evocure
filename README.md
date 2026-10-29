@@ -286,34 +286,66 @@ falling from 2.04 to 1.04 as training scaffolds rise from 8 to 27, and still des
 steeply at the current size. The estimator is data limited, not architecture limited.
 Reproduce it with `python scripts/investigate_potency_estimator.py`.
 
-**What would help.**
-- An assay-homogeneous PDAC cytotoxicity set substantially larger than 43 compounds.
-  PANC-1 and MIA PaCa-2 IC50 values from ChEMBL and GDSC are the obvious source. Order of
-  magnitude extrapolation suggests 200 scaffolds would bring the conformal interval from
-  a factor of 1300 to something near 30, which is the difference between ranking
-  compounds and saying something about them.
+**This has been tried, and ChEMBL does not supply it.** The obvious plan was to pull
+PANC-1 and MIA PaCa-2 IC50 values from ChEMBL. The tooling for that now runs end to end,
+and the result is negative. Recorded here so nobody spends the effort twice.
+
+ChEMBL_37 yields 2070 unique PANC-1 IC50 compounds over 900 Murcko scaffolds, which looks
+like the 200 scaffolds this section used to ask for, nearly five times over. Retraining on
+it reports RMSE 1.34 to 0.85 and the conformal quantile 3.12 to 1.78 log units, a factor
+of 1330 down to a factor of 60.
+
+None of that is an improvement. Those numbers are computed on different populations: the
+curated set was built to span potency (pIC50 variance 5.96), the ChEMBL set concentrates
+(variance 1.16), and since R2 = 1 - MSE/variance the smaller denominator alone reproduces
+the reported R2 of both models. Scored properly, both trained with the held-out scaffolds
+removed and both tested on the same curated compounds, the 2106 compound model was **worse
+on four of five holdout draws**, RMSE +0.23 log units on average.
+
+The reason is that "IC50 | PANC-1" is not one assay. It is **355 distinct assays from 325
+distinct papers, median three records each, largest 70**, and only four with 40 or more.
+The importer groups on endpoint, cell line and organism, so it cannot see that it is
+pooling 355 protocols; the 26 duplicate disagreements it did report, up to 203 fold on the
+same compound, are that heterogeneity measured directly. More compounds from more papers
+is not more data for this purpose. Reproduce with
+`python scripts/measure_dataset_expansion.py`.
+
+**What would help, given that.**
+- **GDSC**, or any single large panel run under one protocol. One protocol across a few
+  hundred compounds beats thousands across hundreds of protocols, and this is now the
+  first recommendation rather than one of four.
+- **Hierarchical or multi-task modelling** that treats each assay as its own task over a
+  shared representation instead of pooling them into one target. That is the only route
+  that makes the 952 available scaffolds usable, and it is a modelling change rather than
+  a data one.
 - Calibration of the tissue model against published spheroid or organoid dose response
   data, so that simulated growth inhibition means something outside this software.
 - Propagation of QSAR uncertainty through the tissue simulation. At present a point IC50
   enters the simulation and the interval is dropped, which flatters the output.
 
 **Done looks like.** A fitted model with its validation protocol, a dataset with
-provenance per record, and a statement of what the conformal interval became.
+provenance per record, and a statement of what the conformal interval became **measured on
+a test set the previous model was also scored on**. The last clause is the part this
+project got wrong first time.
 
-[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) lists the sources and the exact import
-commands. `scripts/import_bioactivity.py` enforces assay homogeneity so a bulk
-download cannot quietly pool incomparable measurements into one training target.
+[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) lists the sources and the exact commands.
+`scripts/fetch_chembl_bioactivity.py` obtains the data and reports how many protocols a
+fetch pools before you import it; `scripts/import_bioactivity.py` gates assay
+comparability on endpoint and cell line, which this exercise showed is necessary and not
+sufficient.
 
 ### Challenge 2. Improve molecular generation and evolutionary optimisation
 
 **Where it stands.** The generator applies RDKit point mutations over nine functional
 groups, bioisosteric substitutions and BRICS fragment crossover, selected by NSGA-II over
-six objectives with the tumour simulation in the loop. A published run evaluates around
-110 unique structures across four generations.
+six objectives with the tumour simulation in the loop, inside a bounded drug-like
+envelope. The published run evaluates 467 unique valid structures over 115 Bemis-Murcko
+scaffolds, across 20 generations at population 24, in 23 minutes on four CPU cores.
 
 **Why that is small.** Established molecular optimisation studies operate at 10^4 to 10^6
-evaluations. At 10^2 the search barely leaves the seed scaffolds, which is visible in the
-results: candidates cluster at Tanimoto 0.6 to the seed drug. The platform has also never
+evaluations. At a few hundred the search barely leaves the seed scaffolds, which is
+visible in the results: all five reported candidates are gemcitabine analogues at Tanimoto
+0.62 to 0.78 to that seed. The platform has also never
 been benchmarked against the standard baselines, so its generator's quality relative to
 GB-GA, REINVENT or a SELFIES method is simply unknown.
 
@@ -326,18 +358,48 @@ GB-GA, REINVENT or a SELFIES method is simply unknown.
   generation and currently dominates; surrogate-assisted or multi-fidelity selection
   would let the population grow by orders of magnitude.
 - Diversity preservation. NSGA-II crowding distance operates on objective space, not
-  chemical space, so the population converges structurally.
+  chemical space, so the population converges structurally. Blending Tanimoto distance
+  into that tie-break has been tried and **does not fix it**, which narrows the problem
+  rather than solving it. Over three seeds at six generations and population 16 it moved
+  mean pairwise Tanimoto distance by -0.012 and distinct Murcko scaffolds by -0.3, both
+  inside seed noise, with the front overflowing every generation (20 to 28 members
+  against a population of 16) so the tie-break was certainly firing. Downweighting the
+  applicability-domain objective, which is maximised similarity to the training set, did
+  not widen the chemistry either. So the convergence is set somewhere other than
+  survivor selection, most likely in how offspring are generated. Reproduce with
+  `python scripts/measure_chemical_diversity.py`; the mechanism is available but off by
+  default as `chemical_diversity_weight`.
 
 **Done looks like.** A benchmark number against a published baseline, or a demonstrated
 increase in explored chemical diversity at equal compute.
 
 ### Challenge 3. Chemical plausibility, synthesizability and experimental validation
 
-**Where it stands.** Generated structures are RDKit-valid and pass valence checks. That
-is the entire plausibility assessment. There is no synthetic accessibility scoring, no
-retrosynthetic analysis, no stability or reactivity screening, and no check for
-pan-assay interference. Some published candidates are chemically odd on inspection, for
-example nucleoside analogues fused into dimers that no chemist would propose.
+**Where it stands.** Generated structures are RDKit-valid, pass valence checks, and are
+now bounded to a drug-like envelope: 600 Da, 45 heavy atoms, 12 rotatable bonds, 6 rings,
+a single connected component. PAINS, Brenk, NIH and synthetic accessibility are
+computed and reported, and can enter selection with `medchem_filters`. There is still no
+retrosynthetic analysis and no stability or reactivity screening.
+
+The envelope is a correctness fix, not a plausibility assessment. Before it, nothing in
+the search bounded molecular size at all: four successive crossovers took erlotinib from
+349 to 1131 Da, growing every step, and ten generations under size-favouring selection
+reached a mean of 76 kDa. The only size pressure was QED, which a caller can zero out
+through `objective_weights`. That is the mechanism behind the fused dimers this section
+used to describe. Reproduce either direction from
+`tests/level3_evolution/test_chemical_envelope.py`.
+
+What that buys is narrow, and the published report shows how narrow. Regenerating it with
+the envelope in place changed nothing a reader would notice: candidates at 356 to 403 Da
+against 356 to 385 before, no structural alerts either way, SA 4.10 to 4.32 against 4.10
+to 4.36, and the same five gemcitabine analogues. This run never needed the bound, because
+it already weights QED at 2.0 and runs the medicinal chemistry filters. The envelope earns
+its place against the operators themselves and against a run that downweights QED, not
+against this one, and it is not offered as an improvement to these candidates.
+
+A molecule inside the envelope with no structural alert and a routine SA score is still
+only "not obviously impossible", and the rule sets flag approved drugs, so passing them
+means little on its own.
 
 **Why it matters.** A ranked list whose members cannot be made, or would decompose, or
 would trigger every assay they touch, is not a shortlist. Chemical judgement is the
